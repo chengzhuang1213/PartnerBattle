@@ -1,0 +1,395 @@
+:root {
+  color-scheme: dark;
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  background: #080b0e;
+  color: #f1e8d2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(86, 67, 35, 0.28), transparent 28%),
+    radial-gradient(circle at 90% 38%, rgba(48, 84, 111, 0.18), transparent 28%),
+    linear-gradient(180deg, #111317 0%, #080b0e 100%);
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(100%, 1540px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 4px;
+}
+
+
+.primary-action,
+.secondary-action,
+.preview-button {
+  min-height: 46px;
+  border-radius: 6px;
+  padding: 0 18px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.primary-action {
+  min-width: 320px;
+  border: 1px solid #f2cf83;
+  background: linear-gradient(180deg, #f2cf83, #d19d3d);
+  color: #19110a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 8px 20px rgba(0, 0, 0, 0.32);
+  font-size: 28px;
+}
+
+.secondary-action,
+.preview-button {
+  border: 1px solid #514437;
+  background: linear-gradient(180deg, #2c2822, #181818);
+  color: #eadfc8;
+}
+
+.primary-action:disabled {
+  cursor: default;
+  filter: grayscale(0.8);
+  opacity: 0.56;
+}
+
+
+.pool-chip,
+.pool-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 5px;
+  padding: 0 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.orange {
+  background: #d9672a;
+}
+
+.purple {
+  background: #7249b8;
+}
+
+.blue {
+  background: #2f72b9;
+}
+
+.pet-portrait {
+  display: block;
+  min-width: 0;
+}
+
+.pet-art {
+  display: block;
+  width: 100%;
+  height: 162px;
+  border-radius: 5px;
+  background: #171b1d;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.partner-art {
+  padding: 4px;
+}
+
+.battle-art {
+  display: block;
+  width: 100%;
+  height: 360px;
+  object-fit: contain;
+  object-position: center bottom;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 76%, rgba(239, 196, 99, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(9, 12, 14, 0.25), rgba(0, 0, 0, 0.16));
+}
+
+.skill-icon-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.pet-info {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.pet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(218, 205, 177, 0.18);
+}
+
+.stat-list {
+  display: grid;
+  gap: 7px;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 54px;
+  align-items: center;
+  gap: 8px;
+  color: #eee6d2;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.stat-row span {
+  color: #eee6d2;
+}
+
+.stat-row.hp span {
+  color: #91d078;
+}
+
+.stat-row.atk span {
+  color: #ff7974;
+}
+
+.stat-row.def span {
+  color: #83bdea;
+}
+
+.stat-row.spd span {
+  color: #77cae7;
+}
+
+.stat-row strong {
+  justify-self: end;
+  color: #f6efd9;
+  font-size: 20px;
+}
+
+
+.skill-button[data-tooltip]::after,
+.skill-slot[data-tooltip]::after,
+.skill-capsule[data-tooltip]::after,
+.status-capsule[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 14px);
+  z-index: 40;
+  width: min(340px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 207, 120, 0.72);
+  border-radius: 8px;
+  background: rgba(18, 17, 13, 0.98);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.46), 0 0 22px rgba(245, 207, 120, 0.16);
+  color: #fff4d2;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.skill-button[data-tooltip]::before,
+.skill-slot[data-tooltip]::before,
+.skill-capsule[data-tooltip]::before,
+.status-capsule[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  z-index: 41;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid rgba(245, 207, 120, 0.72);
+  border-bottom: 1px solid rgba(245, 207, 120, 0.72);
+  background: rgba(18, 17, 13, 0.98);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px) rotate(45deg);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.skill-button[data-tooltip]:hover::after,
+.skill-button[data-tooltip]:focus-visible::after,
+.skill-slot[data-tooltip]:hover::after,
+.skill-slot[data-tooltip]:focus-visible::after,
+.skill-capsule[data-tooltip]:hover::after,
+.skill-capsule[data-tooltip]:focus-visible::after,
+.status-capsule[data-tooltip]:hover::after,
+.status-capsule[data-tooltip]:focus-visible::after,
+.skill-button[data-tooltip]:hover::before,
+.skill-button[data-tooltip]:focus-visible::before,
+.skill-slot[data-tooltip]:hover::before,
+.skill-slot[data-tooltip]:focus-visible::before,
+.skill-capsule[data-tooltip]:hover::before,
+.skill-capsule[data-tooltip]:focus-visible::before,
+.status-capsule[data-tooltip]:hover::before,
+.status-capsule[data-tooltip]:focus-visible::before {
+  opacity: 1;
+}
+
+.skill-button[data-tooltip]:hover::after,
+.skill-button[data-tooltip]:focus-visible::after,
+.skill-slot[data-tooltip]:hover::after,
+.skill-slot[data-tooltip]:focus-visible::after,
+.skill-capsule[data-tooltip]:hover::after,
+.skill-capsule[data-tooltip]:focus-visible::after,
+.status-capsule[data-tooltip]:hover::after,
+.status-capsule[data-tooltip]:focus-visible::after {
+  transform: translate(-50%, 0);
+}
+
+.skill-button[data-tooltip]:hover::before,
+.skill-button[data-tooltip]:focus-visible::before,
+.skill-slot[data-tooltip]:hover::before,
+.skill-slot[data-tooltip]:focus-visible::before,
+.skill-capsule[data-tooltip]:hover::before,
+.skill-capsule[data-tooltip]:focus-visible::before,
+.status-capsule[data-tooltip]:hover::before,
+.status-capsule[data-tooltip]:focus-visible::before {
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+.skill-list .skill-button:nth-child(6n + 1)::after {
+  left: 0;
+  transform: translate(0, 8px);
+}
+
+.skill-list .skill-button:nth-child(6n + 1)::before {
+  left: 26px;
+}
+
+.skill-list .skill-button:nth-child(6n + 1):hover::after,
+.skill-list .skill-button:nth-child(6n + 1):focus-visible::after {
+  transform: translate(0, 0);
+}
+
+.skill-list .skill-button:nth-child(6n)::after {
+  right: 0;
+  left: auto;
+  transform: translate(0, 8px);
+}
+
+.skill-list .skill-button:nth-child(6n)::before {
+  right: 26px;
+  left: auto;
+}
+
+.skill-list .skill-button:nth-child(6n):hover::after,
+.skill-list .skill-button:nth-child(6n):focus-visible::after {
+  transform: translate(0, 0);
+}
+
+.combat-status-card.player .skill-capsule[data-tooltip]::after,
+.combat-status-card.player .status-capsule[data-tooltip]::after,
+.bench-card:nth-child(3n + 1) .skill-capsule[data-tooltip]::after {
+  left: 0;
+  transform: translate(0, 8px);
+}
+
+.combat-status-card.player .skill-capsule[data-tooltip]::before,
+.combat-status-card.player .status-capsule[data-tooltip]::before,
+.bench-card:nth-child(3n + 1) .skill-capsule[data-tooltip]::before {
+  left: 24px;
+}
+
+.combat-status-card.player .skill-capsule[data-tooltip]:hover::after,
+.combat-status-card.player .skill-capsule[data-tooltip]:focus-visible::after,
+.combat-status-card.player .status-capsule[data-tooltip]:hover::after,
+.combat-status-card.player .status-capsule[data-tooltip]:focus-visible::after,
+.bench-card:nth-child(3n + 1) .skill-capsule[data-tooltip]:hover::after,
+.bench-card:nth-child(3n + 1) .skill-capsule[data-tooltip]:focus-visible::after {
+  transform: translate(0, 0);
+}
+
+.combat-status-card.enemy .skill-capsule[data-tooltip]::after,
+.combat-status-card.enemy .status-capsule[data-tooltip]::after,
+.bench-card:nth-child(3n) .skill-capsule[data-tooltip]::after {
+  right: 0;
+  left: auto;
+  transform: translate(0, 8px);
+}
+
+.combat-status-card.enemy .skill-capsule[data-tooltip]::before,
+.combat-status-card.enemy .status-capsule[data-tooltip]::before,
+.bench-card:nth-child(3n) .skill-capsule[data-tooltip]::before {
+  right: 24px;
+  left: auto;
+}
+
+.combat-status-card.enemy .skill-capsule[data-tooltip]:hover::after,
+.combat-status-card.enemy .skill-capsule[data-tooltip]:focus-visible::after,
+.combat-status-card.enemy .status-capsule[data-tooltip]:hover::after,
+.combat-status-card.enemy .status-capsule[data-tooltip]:focus-visible::after,
+.bench-card:nth-child(3n) .skill-capsule[data-tooltip]:hover::after,
+.bench-card:nth-child(3n) .skill-capsule[data-tooltip]:focus-visible::after {
+  transform: translate(0, 0);
+}
+
+.remove-skill {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(245, 222, 174, 0.22);
+  color: #f4e1bc;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.blue-word {
+  color: #61a8ef;
+}
+
+.red-word {
+  color: #e2685f;
+}
+
+.gold-word {
+  color: #e5aa38;
+}
+
+.purple-word {
+  color: #cf82ec;
+}
+
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 0;
+  }
+
+  .primary-action {
+    min-width: 0;
+    width: 100%;
+    font-size: 22px;
+  }
+}
