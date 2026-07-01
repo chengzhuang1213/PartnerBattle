@@ -23,10 +23,15 @@ function renderStart() {
           <strong>单人模式</strong>
           <small>挑战 AI 对手</small>
         </button>
-        <button class="mode-card duo" type="button" disabled>
+        <button class="mode-card duo" data-start-hotseat type="button">
           <span class="mode-icon">●●</span>
-          <strong>双人模式</strong>
-          <small>与好友进行对战</small>
+          <strong>双人同屏</strong>
+          <small>热座闭眼 Build</small>
+        </button>
+        <button class="mode-card online" type="button" disabled>
+          <span class="mode-icon">◎</span>
+          <strong>双人联机</strong>
+          <small>敬请期待</small>
         </button>
       </main>
 

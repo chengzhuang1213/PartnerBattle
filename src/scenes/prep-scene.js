@@ -4,14 +4,16 @@ function selectPet(id) {
 }
 
 function selectSkill(id) {
-  const skill = state.playerSkills.find((item) => item.id === id);
+  const skill = activeBuildSkills().find((item) => item.id === id);
   state.selectedSkillId = skill && !skill.assignedPetId ? id : null;
   renderGame();
 }
 
 function assignSkillToPet(skillId, petId, requiredTier = null) {
-  const skill = state.playerSkills.find((item) => item.id === skillId);
-  const pet = state.playerTeam.find((item) => item.id === petId);
+  const skills = activeBuildSkills();
+  const team = activeBuildTeam();
+  const skill = skills.find((item) => item.id === skillId);
+  const pet = team.find((item) => item.id === petId);
   if (requiredTier && skill?.tier !== requiredTier) return;
   if (!skill || !pet || skill.assignedPetId) return;
 
@@ -34,11 +36,11 @@ function assignSkillToPet(skillId, petId, requiredTier = null) {
 }
 
 function skillAssignBlockedReason(pet, skill) {
-  const assigned = getPetSkills(pet, state.playerSkills);
+  const assigned = getPetSkills(pet, activeBuildSkills());
   const sameGroupSkill = assigned.find((item) => item.group === skill.group);
   if (sameGroupSkill) return `已经有${baseSkillName(sameGroupSkill)}`;
 
-  if (!canAssignSkill(pet, skill, state.playerSkills)) {
+  if (!canAssignSkill(pet, skill, activeBuildSkills())) {
     if (skill.tier === "high") return "高级技能栏位已满";
     return "初级技能栏位已满";
   }
@@ -56,10 +58,12 @@ function assignSelectedSkill(petId) {
 }
 
 function removeSkill(skillId) {
-  const skill = state.playerSkills.find((item) => item.id === skillId);
+  const skills = activeBuildSkills();
+  const team = activeBuildTeam();
+  const skill = skills.find((item) => item.id === skillId);
   if (!skill) return;
 
-  const pet = state.playerTeam.find((item) => item.id === skill.assignedPetId);
+  const pet = team.find((item) => item.id === skill.assignedPetId);
   if (pet) pet.skills = pet.skills.filter((id) => id !== skill.id);
   skill.assignedPetId = null;
   state.selectedSkillId = null;
@@ -80,11 +84,13 @@ function autoAssignEnemySkills(team, skills) {
 
 function randomAssignPlayerSkills() {
   stopBattleReplay();
-  for (const pet of state.playerTeam) pet.skills = [];
-  for (const skill of state.playerSkills) skill.assignedPetId = null;
+  const team = activeBuildTeam();
+  const skills = activeBuildSkills();
+  for (const pet of team) pet.skills = [];
+  for (const skill of skills) skill.assignedPetId = null;
 
-  for (const skill of shuffle(state.playerSkills)) {
-    const candidates = shuffle(state.playerTeam).filter((pet) => canAssignSkill(pet, skill, state.playerSkills));
+  for (const skill of shuffle(skills)) {
+    const candidates = shuffle(team).filter((pet) => canAssignSkill(pet, skill, skills));
     const pet = candidates[0];
     if (!pet) continue;
 
@@ -127,7 +133,7 @@ function handleSkillDragOver(event) {
   const target = event.target.closest("[data-drop-pet]");
   if (!target) return;
   const skillId = event.dataTransfer.getData("text/plain") || state.selectedSkillId;
-  const skill = state.playerSkills.find((item) => item.id === skillId);
+  const skill = activeBuildSkills().find((item) => item.id === skillId);
   if (target.dataset.dropTier && skill?.tier !== target.dataset.dropTier) return;
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
@@ -143,20 +149,30 @@ function handleSkillDrop(event) {
 }
 
 function renderGame() {
+  const hotseat = state.mode === "hotseat";
+  const activeSide = activeBuildSide();
+  const playerInteractive = !hotseat || activeSide === "player";
+  const enemyInteractive = hotseat && activeSide === "enemy";
+  const playerTitle = hotseat ? "玩家 A 技能池" : "我的技能池";
+  const enemyTitle = hotseat ? "玩家 B 技能池" : "对方技能池（AI）";
+  const readyText = hotseat ? (activeSide === "player" ? "玩家 A 确认 Build" : "玩家 B 确认 Build") : "确认分配";
+  const footerHint = hotseat
+    ? (activeSide === "player" ? "玩家 A 正在 Build。玩家 B 请不要观看屏幕。" : "玩家 B 正在 Build。只能查看玩家 A 的技能池和伙伴属性，看不到 A 的技能分配。")
+    : "提示：你可以看到 AI 的完整技能池，但看不到 AI 最终把技能装给了谁。";
   app.innerHTML = `
     <section class="prep-screen">
       <header class="prep-header">
         <div>
-          <h1>战前准备</h1>
-          <p>在下方选择技能并分配给你的伙伴</p>
+          <h1>${hotseat ? "双人同屏 Build" : "战前准备"}</h1>
+          <p>${hotseat ? (activeSide === "player" ? "玩家 A 分配技能" : "玩家 B 分配技能") : "在下方选择技能并分配给你的伙伴"}</p>
         </div>
         <button class="rules-button" data-rules type="button">规则说明</button>
       </header>
 
       <main class="prep-board">
         <section class="side-panel player-side">
-          ${skillPool(state.playerSkills, state.playerTeam, "我的技能池", true)}
-          ${teamPanel(state.playerTeam, state.playerSkills, "我的伙伴", true)}
+          ${skillPool(state.playerSkills, state.playerTeam, playerTitle, playerInteractive)}
+          ${teamPanel(state.playerTeam, state.playerSkills, hotseat ? "玩家 A 伙伴" : "我的伙伴", playerInteractive)}
         </section>
 
         <section class="versus-panel">
@@ -164,28 +180,42 @@ function renderGame() {
         </section>
 
         <section class="side-panel enemy-side">
-          ${skillPool(state.enemySkills, state.enemyTeam, "对方技能池（AI）", false)}
-          ${teamPanel(state.enemyTeam, state.enemySkills, "对方伙伴", false)}
+          ${skillPool(state.enemySkills, state.enemyTeam, enemyTitle, enemyInteractive)}
+          ${teamPanel(state.enemyTeam, state.enemySkills, hotseat ? "玩家 B 伙伴" : "对方伙伴", enemyInteractive)}
         </section>
       </main>
 
       <footer class="prep-footer">
         <div class="prep-footer-left">
           <button class="prep-back" data-confirm-home type="button">返回</button>
-          <button class="reroll-button" data-reroll-player type="button">重新随机</button>
+          ${hotseat ? "" : `<button class="reroll-button" data-reroll-player type="button">重新随机</button>`}
         </div>
-        <p>提示：你可以看到 AI 的完整技能池，但看不到 AI 最终把技能装给了谁。</p>
+        <p>${footerHint}</p>
         <div class="prep-actions">
           <button class="recommend-button" data-random-skills>一键推荐</button>
-          <button class="ready-button" data-fight>确认分配</button>
+          <button class="ready-button" data-fight>${readyText}</button>
         </div>
       </footer>
       <div class="prep-floating-tooltip" role="tooltip" hidden></div>
       ${state.showRules ? rulesModal() : ""}
       ${state.equipWarning ? equipWarningModal(state.equipWarning) : ""}
       ${state.confirmHome ? homeConfirmModal() : ""}
+      ${state.confirmBuild ? buildConfirmModal() : ""}
+      ${privacyGateOverlay()}
     </section>
   `;
+}
+
+function activeBuildSide() {
+  return state.mode === "hotseat" ? state.buildSide : "player";
+}
+
+function activeBuildTeam() {
+  return activeBuildSide() === "enemy" ? state.enemyTeam : state.playerTeam;
+}
+
+function activeBuildSkills() {
+  return activeBuildSide() === "enemy" ? state.enemySkills : state.playerSkills;
 }
 
 function homeConfirmModal() {
@@ -200,6 +230,30 @@ function homeConfirmModal() {
         <footer>
           <button class="home-confirm-cancel" data-close-home-confirm type="button">取消</button>
           <button class="home-confirm-go" data-go-home type="button">确认返回首页</button>
+        </footer>
+      </section>
+    </div>
+  `;
+}
+
+function buildConfirmModal() {
+  const hotseat = state.mode === "hotseat";
+  const activeSide = activeBuildSide();
+  const playerLabel = hotseat ? (activeSide === "player" ? "玩家 A" : "玩家 B") : "当前分配";
+  const nextText = hotseat
+    ? (activeSide === "player" ? "确认后会进入玩家 B 的 Build 遮屏。" : "确认后会进入出战选择遮屏。")
+    : "确认后会进入出战选择。";
+  return `
+    <div class="home-confirm-overlay build-confirm-overlay" data-close-build-confirm>
+      <section class="home-confirm-modal build-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="build-confirm-title">
+        <header>
+          <h2 id="build-confirm-title">确认提交 ${playerLabel} 的 Build？</h2>
+          <button class="home-confirm-close build-confirm-close" data-close-build-confirm type="button" aria-label="取消提交">×</button>
+        </header>
+        <p>${nextText} 提交后本轮技能分配不能再修改。</p>
+        <footer>
+          <button class="home-confirm-cancel build-confirm-cancel" data-close-build-confirm type="button">取消</button>
+          <button class="home-confirm-go" data-confirm-build type="button">确认提交</button>
         </footer>
       </section>
     </div>
@@ -376,8 +430,8 @@ function teamPanel(team, skillList, title, interactive) {
 
 function partnerCard(pet, skillList, interactive) {
   const skills = interactive ? getPetSkills(pet, skillList) : [];
-  const selectedSkill = state.playerSkills.find((skill) => skill.id === state.selectedSkillId);
-  const canReceive = interactive && selectedSkill ? canAssignSkill(pet, selectedSkill, state.playerSkills) : false;
+  const selectedSkill = activeBuildSkills().find((skill) => skill.id === state.selectedSkillId);
+  const canReceive = interactive && selectedSkill ? canAssignSkill(pet, selectedSkill, activeBuildSkills()) : false;
 
   return `
     <article class="prep-partner ${pet.poolClass} ${canReceive ? "can-receive-skill" : ""}" ${interactive ? `data-select="${pet.id}" data-drop-pet="${pet.id}"` : ""}>
@@ -385,7 +439,7 @@ function partnerCard(pet, skillList, interactive) {
       <div class="partner-main">
         <span class="prep-portrait">${partnerArt(pet)}</span>
         <div class="partner-stats">
-          ${compactStatRows(pet, skillList)}
+          ${compactStatRows(pet, interactive ? skillList : [])}
         </div>
       </div>
       ${slotTray(pet, skills, interactive)}

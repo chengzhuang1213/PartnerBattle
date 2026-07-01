@@ -1,34 +1,90 @@
 function resolveBattle() {
+  if (state.mode === "hotseat" && state.buildSide === "player") {
+    state.privacyGate = {
+      title: "玩家 B 开始 Build",
+      body: "玩家 A 请闭眼。确认后屏幕亮起，玩家 B 进行技能分配。",
+      action: "start-build-b",
+    };
+    renderGame();
+    return;
+  }
+
   state.battlePickMode = true;
   state.enemyOrder = [];
   state.selectedId = null;
   state.pendingPlayerId = null;
+  state.pendingEnemyId = null;
+  state.pendingPickSide = "player";
+  state.pendingInspectSide = null;
+  state.pendingInspectId = null;
   state.result = createBattleSession();
   state.replayIndex = 0;
   state.showBattleLog = false;
   stopBattleReplay();
+  if (state.mode === "hotseat") {
+    state.privacyGate = {
+      title: "玩家 A 选择出战",
+      body: "玩家 B 请闭眼。确认后玩家 A 选择本局上场伙伴。",
+      action: "start-battle-pick-player",
+    };
+  }
   renderBattlePage();
 }
 
-function selectBattlePet(id) {
+function selectBattlePet(id, side = "player") {
   if (!state.battlePickMode || state.result?.winner) return;
-  if (!availablePlayerTeam().some((pet) => pet.id === id)) return;
-  state.pendingPlayerId = id;
+  const pickSide = state.mode === "hotseat" ? state.pendingPickSide : "player";
+  if (side !== pickSide) return;
+  const list = side === "enemy" ? availableEnemyTeam() : availablePlayerTeam();
+  if (!list.some((pet) => pet.id === id)) return;
+  if (side === "enemy") state.pendingEnemyId = id;
+  else state.pendingPlayerId = id;
+  state.pendingInspectSide = side;
+  state.pendingInspectId = id;
+  renderBattlePage();
+}
+
+function inspectBattlePet(side, id) {
+  if (!state.battlePickMode) return;
+  const list = side === "enemy" ? state.enemyTeam : state.playerTeam;
+  if (!list.some((pet) => pet.id === id)) return;
+  state.pendingInspectSide = side;
+  state.pendingInspectId = id;
   renderBattlePage();
 }
 
 function startSelectedBattleMatch() {
   if (!state.battlePickMode || state.result?.winner || !state.pendingPlayerId) return;
+
+  if (state.mode === "hotseat" && state.pendingPickSide === "player") {
+    state.pendingPickSide = "enemy";
+    state.pendingInspectSide = null;
+    state.pendingInspectId = null;
+    state.privacyGate = {
+      title: "玩家 B 选择出战",
+      body: "玩家 A 请闭眼。确认后玩家 B 选择本局上场伙伴。",
+      action: "start-battle-pick-enemy",
+    };
+    renderBattlePage();
+    return;
+  }
+
+  if (state.mode === "hotseat" && !state.pendingEnemyId) return;
+
   state.selectedId = state.pendingPlayerId;
   const player = availablePlayerTeam().find((pet) => pet.id === state.pendingPlayerId);
   const enemies = availableEnemyTeam();
-  const enemy = enemies.length ? pick(enemies) : null;
+  const enemy = state.mode === "hotseat"
+    ? enemies.find((pet) => pet.id === state.pendingEnemyId)
+    : enemies.length ? pick(enemies) : null;
   if (!player || !enemy) return;
 
   const startIndex = state.result.events.length;
   appendBattleMatch(player, enemy);
   state.battlePickMode = false;
   state.pendingPlayerId = null;
+  state.pendingEnemyId = null;
+  state.pendingPickSide = "player";
   state.replayIndex = startIndex;
   renderBattlePage();
   startBattleReplay();
@@ -82,8 +138,11 @@ function appendBattleMatch(player, enemy) {
     enemyMaxHp: match.enemyMaxHp,
     playerStatus: match.playerStatus,
     enemyStatus: match.enemyStatus,
+    playerEffects: match.playerEffects,
+    enemyEffects: match.enemyEffects,
     playerStats: match.playerStats,
     enemyStats: match.enemyStats,
+    matchWinner: match.winner,
     playerWins: result.playerWins,
     enemyWins: result.enemyWins,
   });
@@ -151,6 +210,8 @@ function simulateBattle(playerPet, enemyPet, matchIndex, playerWins, enemyWins) 
     enemyMaxHp: enemy.maxHp,
     playerStatus: combatStatuses(player),
     enemyStatus: combatStatuses(enemy),
+    playerEffects: combatEffects(player),
+    enemyEffects: combatEffects(enemy),
     playerStats: combatStats(player),
     enemyStats: combatStats(enemy),
     log: ctx.log,
@@ -188,6 +249,13 @@ function combatStatuses(combatant) {
   return statuses;
 }
 
+function combatEffects(combatant) {
+  const effects = [];
+  if (combatant.poisonTurns > 0) effects.push("poison");
+  if (combatant.unyieldingActive) effects.push("unyielding");
+  return effects;
+}
+
 function recordEvent(ctx, text, extra = {}) {
   ctx.log.push(text);
   ctx.events.push({
@@ -202,6 +270,8 @@ function recordEvent(ctx, text, extra = {}) {
     enemyMaxHp: ctx.enemy.maxHp,
     playerStatus: combatStatuses(ctx.player),
     enemyStatus: combatStatuses(ctx.enemy),
+    playerEffects: combatEffects(ctx.player),
+    enemyEffects: combatEffects(ctx.enemy),
     playerStats: combatStats(ctx.player),
     enemyStats: combatStats(ctx.enemy),
     playerWins: ctx.playerWins,
@@ -270,6 +340,8 @@ function performAttack(attacker, defender, ctx, options) {
     targetSide: defender.side,
     damage,
     critical: isCrit,
+    effectName: config.isComboAttack ? "combo" : isCrit ? "crit" : "attack",
+    effectSide: defender.side,
     skillName: attackSkills.map((skill) => skill.name).join(" / "),
     damageBreakdown: {
       attack: attacker.atk,

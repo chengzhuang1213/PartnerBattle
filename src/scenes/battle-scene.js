@@ -19,26 +19,38 @@ function renderBattlePrepPage() {
   const usedPlayerIds = new Set(state.result?.matches.map((match) => match.player.id) || []);
   const usedEnemyIds = new Set(state.result?.matches.map((match) => match.enemy.id) || []);
   const pendingPlayer = state.playerTeam.find((pet) => pet.id === state.pendingPlayerId);
+  const pendingEnemy = state.enemyTeam.find((pet) => pet.id === state.pendingEnemyId);
+  const hotseat = state.mode === "hotseat";
+  const pickSide = hotseat ? state.pendingPickSide : "player";
+  const shouldShowPendingPlayer = !hotseat || pickSide !== "enemy";
+  const inspectedSide = state.pendingInspectSide || (shouldShowPendingPlayer && pendingPlayer ? "player" : null);
+  const inspectedPlayer = inspectedSide === "player" ? state.playerTeam.find((pet) => pet.id === state.pendingInspectId) || pendingPlayer : shouldShowPendingPlayer ? pendingPlayer : null;
+  const inspectedEnemy = inspectedSide === "enemy" ? state.enemyTeam.find((pet) => pet.id === state.pendingInspectId) || pendingEnemy : pendingEnemy;
+  const canStart = hotseat ? (pickSide === "player" ? Boolean(pendingPlayer) : Boolean(pendingEnemy)) : Boolean(pendingPlayer);
+  const confirmText = hotseat && pickSide === "player" ? "确认 A 的选择" : hotseat ? "开始比赛" : "确认选择";
 
   app.innerHTML = `
     <section class="combat-screen battle-prep-screen is-pick-mode">
       ${combatHeader(playerWins, enemyWins, matchIndex)}
       <main class="combat-main battle-prep-main">
-        ${teamDock(null, usedPlayerIds, usedEnemyIds, true)}
+        ${teamDock(null, usedPlayerIds, usedEnemyIds, pickSide, true)}
         <section class="battle-prep-panel">
           <div class="battle-prep-detail ${pendingPlayer ? "has-pending" : ""}">
-            ${pendingPlayer ? battlePrepCard(pendingPlayer, state.playerSkills) : `<div class="battle-prep-empty">选择 1 位我方伙伴上场</div>`}
+            ${inspectedPlayer ? battlePrepCard(inspectedPlayer, state.playerSkills, hotseat && pickSide === "enemy") : `<div class="battle-prep-empty">${hotseat && pickSide === "enemy" ? "点击玩家 A 卡片查看属性，技能保持隐藏" : "选择 1 位我方伙伴上场"}</div>`}
           </div>
-          <div class="battle-prep-opponent">
-            <strong>对方随机待命</strong>
-            <span>确认选择后进入战斗页面</span>
+          <div class="battle-prep-opponent ${inspectedEnemy ? "has-inspect" : ""}">
+            ${inspectedEnemy ? battlePrepCard(inspectedEnemy, state.enemySkills, !hotseat || pickSide === "player") : `
+              <strong>${hotseat ? "玩家 B 待命" : "对方随机待命"}</strong>
+              <span>${hotseat && pickSide === "enemy" ? "请选择玩家 B 的上场伙伴" : "点击对方卡片查看属性，技能保持隐藏"}</span>
+            `}
           </div>
         </section>
         <div class="battle-prep-confirm">
           <button class="battle-home-button" data-confirm-home type="button">返回首页</button>
-          <button class="primary-action continue-button" data-start-match ${pendingPlayer ? "" : "disabled"}>确认选择</button>
+          <button class="primary-action continue-button" data-start-match ${canStart ? "" : "disabled"}>${confirmText}</button>
         </div>
         ${state.confirmHome ? homeConfirmModal() : ""}
+        ${privacyGateOverlay()}
       </main>
     </section>
   `;
@@ -57,6 +69,8 @@ function renderBattleReplayPage() {
     enemyMaxHp: result.matches[0]?.enemyMaxHp || result.enemy.stats.hp,
     playerStatus: [],
     enemyStatus: [],
+    playerEffects: [],
+    enemyEffects: [],
     playerStats: result.matches[0]?.playerStats || result.player.stats,
     enemyStats: result.matches[0]?.enemyStats || result.enemy.stats,
     playerWins: 0,
@@ -64,8 +78,9 @@ function renderBattleReplayPage() {
     text: "战斗准备。",
   };
   const replayDone = replayIndex >= events.length - 1;
-  const playerDefeated = replayDone && result.winner === "enemy";
-  const enemyDefeated = replayDone && result.winner === "player";
+  const frameWinner = frame.matchWinner || frame.winner || result.winner;
+  const playerDefeated = replayDone && frameWinner === "enemy";
+  const enemyDefeated = replayDone && frameWinner === "player";
   const defeatClass = `${playerDefeated ? "player-defeated" : ""} ${enemyDefeated ? "enemy-defeated" : ""}`.trim();
   const visibleEvents = events.slice(0, Math.max(1, replayIndex + 1));
   const roundText = battleRoundText(events, replayIndex);
@@ -78,16 +93,20 @@ function renderBattleReplayPage() {
           ${battleStatusCard(frame.player, state.playerSkills, "player", frame.playerHp, frame.playerMaxHp, frame.playerStatus, frame.playerStats)}
           ${battleStatusCard(frame.enemy, state.enemySkills, "enemy", frame.enemyHp, frame.enemyMaxHp, frame.enemyStatus, frame.enemyStats)}
           <div class="fighter player-fighter ${fighterState("player", frame)}">
-            ${battleArt(frame.player)}
+            ${battleArt(frame.player, isFighterAttacking("player", frame))}
+            ${persistentEffects("player", frame)}
           </div>
           <div class="fighter enemy-fighter ${fighterState("enemy", frame)}">
-            ${battleArt(frame.enemy)}
+            ${battleArt(frame.enemy, isFighterAttacking("enemy", frame))}
+            ${persistentEffects("enemy", frame)}
           </div>
           <div class="center-combat-text">
             <span>${roundText}</span>
           </div>
           ${skillBubble("player", frame)}
           ${skillBubble("enemy", frame)}
+          ${instantEffect("player", frame)}
+          ${instantEffect("enemy", frame)}
           ${damageBubble("player", frame)}
           ${damageBubble("enemy", frame)}
           ${healBubble("player", frame)}
@@ -95,22 +114,26 @@ function renderBattleReplayPage() {
         </section>
         <div class="combat-prompt ${replayDone && result.winner ? "ended" : ""}">${battlePromptText(result, frame, replayDone)}</div>
         <div class="battle-control-bar">
-          <button class="secondary-action soft-action" data-skip-replay>跳过动画</button>
+          <button class="secondary-action soft-action" data-confirm-home type="button">返回主菜单</button>
           <button class="secondary-action soft-action" data-toggle-log>战斗分析</button>
           <button class="primary-action continue-button" data-continue-battle>${result.winner && replayDone ? "重新开始" : replayDone ? "下一步" : "跳到结果"}</button>
         </div>
         ${state.showBattleLog ? battleLogOverlay(visibleEvents) : ""}
+        ${state.confirmHome ? homeConfirmModal() : ""}
+        ${privacyGateOverlay()}
       </main>
     </section>
   `;
 }
 
 function combatHeader(playerWins, enemyWins, matchIndex) {
+  const playerLabel = state.mode === "hotseat" ? "玩家 A" : "我方";
+  const enemyLabel = state.mode === "hotseat" ? "玩家 B" : "对方 (AI)";
   return `
     <header class="combat-scorebar">
-      <div class="score-side player-score"><strong>我方</strong><span>胜场：${playerWins}</span></div>
+      <div class="score-side player-score"><strong>${playerLabel}</strong><span>胜场：${playerWins}</span></div>
       <div class="round-badge">BO3 第 ${(matchIndex ?? 0) + 1} 局</div>
-      <div class="score-side enemy-score"><span>胜场：${enemyWins}</span><strong>对方 (AI)</strong></div>
+      <div class="score-side enemy-score"><span>胜场：${enemyWins}</span><strong>${enemyLabel}</strong></div>
     </header>
   `;
 }
@@ -141,10 +164,13 @@ function completedMatchesByReplay(result, replayIndex) {
   return result.matches.slice(0, completedCount);
 }
 
-function combatLogPanel(events) {
+function combatLogPanel(events, matchIndexes = [], activeMatchIndex = 0) {
   return `
     <section class="combat-log-panel">
-      <h2>战斗分析</h2>
+      <div class="combat-log-head">
+        <h2>战斗分析</h2>
+        ${battleLogTabs(matchIndexes, activeMatchIndex)}
+      </div>
       <ol class="combat-log">
         ${events.map(renderBattleLogEntry).join("")}
       </ol>
@@ -152,13 +178,34 @@ function combatLogPanel(events) {
   `;
 }
 
-function renderBattleLogEntry(event) {
+function battleLogTabs(matchIndexes, activeMatchIndex) {
+  const labels = ["第一场", "第二场", "第三场"];
   return `
-    <li>
+    <div class="battle-log-tabs" role="tablist" aria-label="战斗场次">
+      ${matchIndexes
+        .map((matchIndex) => `<button class="${matchIndex === activeMatchIndex ? "active" : ""}" data-battle-log-match="${matchIndex}" type="button" role="tab" aria-selected="${matchIndex === activeMatchIndex}">${labels[matchIndex] || `第 ${matchIndex + 1} 场`}</button>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function renderBattleLogEntry(event) {
+  const actionSide = battleLogActionSide(event);
+  return `
+    <li class="${actionSide ? `${actionSide}-action` : ""}">
       <div>${colorBattleLine(event.text || event)}</div>
       ${event.damageBreakdown ? battleDamageAnalysis(event.damageBreakdown) : ""}
     </li>
   `;
+}
+
+function battleLogActionSide(event) {
+  if (event.type === "round" || event.type === "summary") return "";
+  if (event.actorSide) return event.actorSide;
+  if (event.side) return event.side;
+  if (event.matchWinner) return event.matchWinner === "player" ? "player" : "enemy";
+  if (event.winner) return event.winner === "player" ? "player" : "enemy";
+  return "";
 }
 
 function battleDamageAnalysis(detail) {
@@ -187,35 +234,37 @@ function formatSignedNumber(value) {
   return value >= 0 ? `+ ${value}` : `- ${Math.abs(value)}`;
 }
 
-function teamDock(frame, usedPlayerIds, usedEnemyIds, canPick) {
+function teamDock(frame, usedPlayerIds, usedEnemyIds, canPickSide, hideEnemySkills = false) {
   return `
     <section class="team-dock">
       <div class="team-mini-list player-list">
-        ${state.playerTeam.map((partner) => teamMiniCard(partner, "player", frame, usedPlayerIds, canPick)).join("")}
+        ${state.playerTeam.map((partner) => teamMiniCard(partner, "player", frame, usedPlayerIds, canPickSide === "player", state.mode === "hotseat" && canPickSide === "enemy")).join("")}
       </div>
       <div class="vs-badge">VS</div>
       <div class="team-mini-list enemy-list">
-        ${state.enemyTeam.map((partner) => teamMiniCard(partner, "enemy", frame, usedEnemyIds, false)).join("")}
+        ${state.enemyTeam.map((partner) => teamMiniCard(partner, "enemy", frame, usedEnemyIds, state.mode === "hotseat" && canPickSide === "enemy", hideEnemySkills && canPickSide !== "enemy")).join("")}
       </div>
     </section>
   `;
 }
 
-function teamMiniCard(partner, side, frame, usedIds, canPick) {
+function teamMiniCard(partner, side, frame, usedIds, canPick, hideSkills = false) {
   const current = side === "player" ? frame?.player?.id === partner.id : frame?.enemy?.id === partner.id;
   const hp = current ? (side === "player" ? frame.playerHp : frame.enemyHp) : partner.stats.hp;
   const hpPercent = Math.max(0, Math.round((hp / partner.stats.hp) * 100));
   const skillList = side === "player" ? state.playerSkills : state.enemySkills;
-  const skills = displaySkillOrder(getPetSkills(partner, skillList)).slice(0, 3);
+  const skills = hideSkills ? [] : displaySkillOrder(getPetSkills(partner, skillList)).slice(0, 3);
   const used = usedIds.has(partner.id);
-  const pickable = canPick && side === "player" && !used;
+  const pickable = canPick && !used;
+  const inspectable = hideSkills || (state.mode === "hotseat" && !pickable);
+  const inspecting = state.pendingInspectSide === side && state.pendingInspectId === partner.id;
   return `
-    <article class="team-mini-card ${side} ${current ? "active" : ""} ${used ? "used" : ""} ${pickable ? "can-pick" : ""}" ${pickable ? `data-battle-pick="${partner.id}"` : ""}>
+    <article class="team-mini-card ${side} ${current ? "active" : ""} ${used ? "used" : ""} ${pickable ? "can-pick" : ""} ${inspectable ? "can-inspect" : ""} ${inspecting ? "inspecting" : ""}" ${pickable ? `data-battle-pick="${partner.id}" data-battle-pick-side="${side}"` : ""} ${inspectable ? `data-battle-inspect="${partner.id}" data-battle-inspect-side="${side}"` : ""}>
       <div class="mini-avatar">${partnerArt(partner)}</div>
       <div class="mini-info">
         ${poolName(partner, "strong")}
         <div class="hp-bar"><span style="width:${hpPercent}%"></span></div>
-        <div class="mini-skills">${skills.map((skill) => `<i class="${skill.tier}">${skillIconText(skill)}</i>`).join("")}</div>
+        ${hideSkills ? `<div class="mini-skills hidden-skills">???</div>` : `<div class="mini-skills">${skills.map((skill) => `<i class="${skill.tier}">${skillIconText(skill)}</i>`).join("")}</div>`}
       </div>
       <b>${current ? "出战中" : used ? "已上场" : pickable ? "点击上场" : "待命"}</b>
     </article>
@@ -223,11 +272,15 @@ function teamMiniCard(partner, side, frame, usedIds, canPick) {
 }
 
 function battleLogOverlay(lines) {
+  const matchIndexes = [...new Set(lines.map((line) => line.matchIndex).filter(Number.isInteger))];
+  const fallbackMatchIndex = matchIndexes[matchIndexes.length - 1] ?? 0;
+  const activeMatchIndex = matchIndexes.includes(state.battleLogMatchIndex) ? state.battleLogMatchIndex : fallbackMatchIndex;
+  const activeLines = lines.filter((line) => line.matchIndex === activeMatchIndex);
   return `
     <div class="battle-log-overlay">
       <div class="battle-log-dialog">
         <button class="log-close-button" data-close-log type="button">关闭</button>
-        ${combatLogPanel(lines)}
+        ${combatLogPanel(activeLines, matchIndexes, activeMatchIndex)}
       </div>
     </div>
   `;
@@ -248,11 +301,14 @@ function startBattleReplay() {
 }
 
 function fighterState(side, frame) {
-  if (frame.attackAnimationSide === side) return "is-attacking";
-  if (frame.type === "attack" && frame.actorSide === side) return "is-attacking";
+  if (isFighterAttacking(side, frame)) return "is-attacking";
   if (frame.blocked || frame.evaded) return "";
   if (frame.targetSide === side) return "is-hit";
   return "";
+}
+
+function isFighterAttacking(side, frame) {
+  return frame.attackAnimationSide === side || (frame.type === "attack" && frame.actorSide === side);
 }
 
 function skillBubble(side, frame) {
@@ -260,8 +316,37 @@ function skillBubble(side, frame) {
   return `<span class="skill-callout ${side}">${frame.skillName}</span>`;
 }
 
+function instantEffect(side, frame) {
+  if (!frame.effectName || frame.effectSide !== side) return "";
+  const src = {
+    poison: "assets/effects/poison-burst.png",
+    unyielding: "assets/effects/unyielding-burst.png",
+    attack: "assets/effects/attack-slash.png",
+    crit: "assets/effects/crit-slash.png",
+    combo: "assets/effects/combo-slash.png",
+    counter: "assets/effects/attack-slash.png",
+    reflect: "assets/effects/crit-slash.png",
+  }[frame.effectName];
+  if (!src) return "";
+  return `<img class="instant-effect ${frame.effectName} ${side}" src="${src}" alt="" aria-hidden="true" />`;
+}
+
+function persistentEffects(side, frame) {
+  const effects = side === "player" ? frame.playerEffects || [] : frame.enemyEffects || [];
+  const sources = {
+    poison: "assets/effects/poison-aura.png",
+    unyielding: "assets/effects/unyielding-aura.png",
+  };
+  return effects
+    .map((effect) => {
+      const src = sources[effect];
+      return src ? `<img class="persistent-effect ${effect}" src="${src}" alt="" aria-hidden="true" />` : "";
+    })
+    .join("");
+}
+
 function damageBubble(side, frame) {
-  if (frame.type !== "attack" || frame.targetSide !== side || !frame.damage) return "";
+  if (frame.targetSide !== side || !frame.damage) return "";
   return `<span class="damage-pop ${side}">${frame.critical ? "暴击 " : ""}-${frame.damage}</span>`;
 }
 
@@ -270,8 +355,8 @@ function healBubble(side, frame) {
   return `<span class="heal-pop ${side}">+${frame.heal}</span>`;
 }
 
-function battlePrepCard(partner, skillList) {
-  const skills = displaySkillOrder(getPetSkills(partner, skillList));
+function battlePrepCard(partner, skillList, hideSkills = false) {
+  const skills = hideSkills ? [] : displaySkillOrder(getPetSkills(partner, skillList));
   return `
     <article class="battle-prep-card pool-${partner.poolKey}">
       <div class="battle-prep-card-head">
@@ -287,12 +372,24 @@ function battlePrepCard(partner, skillList) {
         <div class="battle-prep-stats">${statRows(partner)}</div>
       </section>
       <section class="battle-prep-skill-panel">
-        <h3>装备技能</h3>
+        <h3>${hideSkills ? "装备技能（未知）" : "装备技能"}</h3>
         <div class="battle-prep-skills">
-          ${skills.length ? skills.map((skill) => prepSkillDetail(skill)).join("") : `<span class="skill-capsule empty">无技能</span>`}
+          ${hideSkills ? hiddenSkillDetail() : skills.length ? skills.map((skill) => prepSkillDetail(skill)).join("") : `<span class="skill-capsule empty">无技能</span>`}
         </div>
       </section>
     </article>
+  `;
+}
+
+function hiddenSkillDetail() {
+  return `
+    <div class="battle-prep-skill hidden">
+      <i>?</i>
+      <div>
+        <strong>技能未知</strong>
+        <span>对方技能将在进入正式战斗后公开。</span>
+      </div>
+    </div>
   `;
 }
 

@@ -38,9 +38,10 @@ function partnerArt(partner) {
   return petSvg(partner);
 }
 
-function battleArt(partner) {
-  if (partner.battleSrc) {
-    return `<img class="battle-art" src="${partner.battleSrc}" alt="${partner.name}" />`;
+function battleArt(partner, attacking = false) {
+  const src = attacking && partner.attackSrc ? partner.attackSrc : partner.battleSrc;
+  if (src) {
+    return `<img class="battle-art ${attacking && partner.attackSrc ? "attack-art" : ""}" src="${src}" alt="${partner.name}" />`;
   }
 
   return partnerArt(partner);

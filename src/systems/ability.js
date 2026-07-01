@@ -180,6 +180,8 @@ function updateDynamicStats(combatant, ctx) {
   triggerSkill(ctx, combatant, statChangeBubbleText([unyielding], before, combatant), `${combatant.name} 的不屈${shouldActivate ? "触发" : "失效"}。`, {
     type: "statChange",
     statChangeSide: combatant.side,
+    effectName: shouldActivate ? "unyielding" : "",
+    effectSide: shouldActivate ? combatant.side : "",
   });
 }
 
@@ -234,7 +236,12 @@ function applyReflect(attacker, defender, damage, ctx) {
   const percent = skill.tier === "high" ? 65 : 35;
   const reflectDamage = Math.max(1, Math.round(damage * (percent / 100)));
   attacker.hp -= reflectDamage;
-  triggerSkill(ctx, defender, skill.name, `${defender.name} 触发反震，反弹 ${reflectDamage} 伤害。`);
+  triggerSkill(ctx, defender, skill.name, `${defender.name} 触发反震，反弹 ${reflectDamage} 伤害。`, {
+    targetSide: attacker.side,
+    damage: reflectDamage,
+    effectName: "reflect",
+    effectSide: attacker.side,
+  });
   updateDynamicStats(attacker, ctx);
 }
 
@@ -242,7 +249,12 @@ function applyCounter(defender, attacker, ctx) {
   const rate = skillTierValue(defender, "counter", 20, 35);
   if (!rate || defender.hp <= 0 || attacker.hp <= 0 || !chance(rate)) return;
 
-  triggerSkill(ctx, defender, hasSkill(defender, "counter").name, `${defender.name} 触发反击。`);
+  triggerSkill(ctx, defender, hasSkill(defender, "counter").name, `${defender.name} 触发反击。`, {
+    attackAnimationSide: defender.side,
+    effectName: "counter",
+    effectSide: attacker.side,
+    targetSide: attacker.side,
+  });
   performAttack(defender, attacker, ctx, { canCombo: false, canCounter: false, canReflect: true });
 }
 
@@ -283,6 +295,10 @@ function applyPoison(target, source, ctx, reason) {
 
   target.poisonTurns = 2;
   triggerSkill(ctx, source, hasSkill(source, "poison")?.name || "中毒", `${target.name} 陷入中毒，持续 2 回合。${reason ? `（${reason}）` : ""}`);
+  Object.assign(ctx.events[ctx.events.length - 1], {
+    effectName: "poison",
+    effectSide: target.side,
+  });
 }
 
 function applyPoisonOnHit(attacker, defender, ctx, targetWasPoisoned) {
@@ -305,7 +321,13 @@ function applyPoisonTick(combatant, ctx) {
   recordEvent(ctx, `${combatant.name} 受到中毒伤害，损失 ${damage} 生命。`, {
     type: "skill",
     side: combatant.side,
+    targetSide: combatant.side,
+    damage,
     skillName: "中毒",
+  });
+  Object.assign(ctx.events[ctx.events.length - 1], {
+    effectName: "poison",
+    effectSide: combatant.side,
   });
   updateDynamicStats(combatant, ctx);
   return combatant.hp <= 0;

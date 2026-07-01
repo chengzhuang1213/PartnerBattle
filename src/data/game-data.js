@@ -33,16 +33,18 @@ const POOLS = {
 };
 
 const PLAYER1_AVATARS = [
-  { name: "东条希", src: "assets/partners/15Toujou-Nozomi-ToXNZh.png", battleSrc: "assets/battle-p1/15Toujou-Nozomi-S678cZ.png" },
-  { name: "矢泽妮可", src: "assets/partners/18Yazawa-Nico-agidhY.png", battleSrc: "assets/battle-p1/18Yazawa-Nico-agidhY.png" },
-  { name: "绚濑绘里", src: "assets/partners/1Ayase-Eli-MqG2az.png", battleSrc: "assets/battle-p1/1Ayase-Eli-wRbUwD.png" },
+  { id: "gold-knight", name: "蔷薇骑士", src: "assets/chibi-avatars/gold-knight.png", battleSrc: "assets/battle-chibi/gold-knight.png", attackSrc: "assets/battle-attack/gold-knight.png" },
+  { id: "silver-mage", name: "冰霜法师", src: "assets/chibi-avatars/silver-mage.png", battleSrc: "assets/battle-chibi/silver-mage.png", attackSrc: "assets/battle-attack/silver-mage.png" },
+  { id: "flame-warrior", name: "火焰剑士", src: "assets/chibi-avatars/flame-warrior.png", battleSrc: "assets/battle-chibi/flame-warrior.png", attackSrc: "assets/battle-attack/flame-warrior.png" },
 ];
 
 const PLAYER2_AVATARS = [
-  { name: "西木野真姬", src: "assets/partners-p2/10Nishikino-Maki-UFQB4E.png", battleSrc: "assets/battle-p2/10Nishikino-Maki-UFQB4E.png" },
-  { name: "岚千砂都", src: "assets/partners-p2/120Arashi-Chisato-NGhy5X.png", battleSrc: "assets/battle-p2/120Arashi-Chisato-eySO7L.png" },
-  { name: "南小鸟", src: "assets/partners-p2/9Minami-Kotori-06DzDA.png", battleSrc: "assets/battle-p2/9Minami-Kotori-BkWR39.png" },
+  { id: "pink-fox-mage", name: "九尾妖狐", src: "assets/chibi-avatars/pink-fox-mage.png", battleSrc: "assets/battle-chibi/pink-fox-mage.png", attackSrc: "assets/battle-attack/pink-fox-mage.png" },
+  { id: "brown-rogue", name: "双刀刺客", src: "assets/chibi-avatars/brown-rogue.png", battleSrc: "assets/battle-chibi/brown-rogue.png", attackSrc: "assets/battle-attack/brown-rogue.png" },
+  { id: "blue-ninja", name: "神秘忍者", src: "assets/chibi-avatars/blue-ninja.png", battleSrc: "assets/battle-chibi/blue-ninja.png", attackSrc: "assets/battle-attack/blue-ninja.png" },
 ];
+
+const ROSTER_AVATARS = [...PLAYER1_AVATARS, ...PLAYER2_AVATARS];
 
 const POOL_KEYS = ["orange", "purple", "blue"];
 
@@ -108,6 +110,7 @@ function createPet(poolKey, owner, avatar) {
     name: avatar?.name || pick(pool.names),
     avatarSrc: avatar?.src || "",
     battleSrc: avatar?.battleSrc || "",
+    attackSrc: avatar?.attackSrc || "",
     stats: rolled.stats,
     power: rolled.power,
     skills: [],
@@ -116,6 +119,10 @@ function createPet(poolKey, owner, avatar) {
 
 function createTeam(owner) {
   const avatars = shuffle(owner === "enemy" ? PLAYER2_AVATARS : PLAYER1_AVATARS).slice(0, POOL_KEYS.length);
+  return POOL_KEYS.map((poolKey, index) => createPet(poolKey, owner, avatars[index]));
+}
+
+function createTeamFromAvatars(owner, avatars) {
   return POOL_KEYS.map((poolKey, index) => createPet(poolKey, owner, avatars[index]));
 }
 
