@@ -1610,12 +1610,144 @@
 
 @media (max-width: 720px) {
   .combat-screen {
+    min-height: 100vh;
+    height: auto;
+    max-height: none;
     padding: 8px;
     border-radius: 14px;
   }
 
+  .combat-scorebar {
+    gap: 6px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .score-side {
+    padding: 0 8px;
+    font-size: 14px;
+  }
+
+  .score-side strong {
+    font-size: 22px;
+  }
+
+  .round-badge {
+    margin: 0;
+    padding: 9px 14px;
+    font-size: 22px;
+  }
+
+  .battle-prep-main {
+    overflow: visible;
+  }
+
+  .team-dock {
+    gap: 8px;
+    padding: 8px;
+  }
+
   .team-mini-list {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .team-mini-card {
+    grid-template-columns: 54px minmax(0, 1fr);
+    min-height: 92px;
+    padding: 8px;
+  }
+
+  .mini-avatar .pet-art {
+    width: 54px;
+    height: 54px;
+  }
+
+  .mini-info strong {
+    font-size: 14px;
+  }
+
+  .mini-skills i {
+    width: 22px;
+    height: 22px;
+  }
+
+  .vs-badge {
+    font-size: 38px;
+  }
+
+  .battle-prep-panel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .battle-prep-detail,
+  .battle-prep-opponent {
+    border-radius: 14px;
+  }
+
+  .battle-prep-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .battle-prep-card-head {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .battle-prep-card-head .combat-avatar .pet-art {
+    width: 72px;
+    height: 72px;
+  }
+
+  .battle-prep-card .battle-prep-card-head .pool-name {
+    font-size: 22px;
+  }
+
+  .battle-prep-stat-panel,
+  .battle-prep-skill-panel {
+    min-height: 0;
+  }
+
+  .battle-prep-stats .stat-row {
+    min-height: 40px;
+    padding: 8px 10px;
+  }
+
+  .battle-prep-skills {
+    max-height: 260px;
+    padding: 10px;
+  }
+
+  .battle-prep-skill {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 9px 10px;
+  }
+
+  .battle-prep-skill i {
+    width: 40px;
+    height: 40px;
+  }
+
+  .battle-prep-ai-note {
+    min-height: 96px;
+    font-size: 17px;
+  }
+
+  .battle-prep-confirm {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .battle-prep-confirm .battle-home-button,
+  .battle-prep-confirm .continue-button {
+    grid-column: auto;
+    min-height: 48px;
+    font-size: 18px;
   }
 
   .combat-main {
@@ -1681,5 +1813,12 @@
   .battle-log-tabs button {
     min-height: 34px;
     font-size: 12px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .team-mini-card.can-pick:hover,
+  .team-mini-card.can-inspect:hover {
+    transform: none;
   }
 }

@@ -848,17 +848,29 @@
 
 @media (max-width: 760px) {
   .prep-screen {
-    padding: 14px;
+    min-height: 100vh;
+    padding: 10px;
+    border-radius: 0;
   }
 
   .prep-header,
   .prep-footer {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .prep-header h1 {
+    font-size: 32px;
+  }
+
+  .prep-header p {
+    font-size: 15px;
   }
 
   .prep-footer-left,
   .prep-actions {
     justify-content: stretch;
+    gap: 8px;
   }
 
   .prep-footer-left .prep-back,
@@ -866,17 +878,142 @@
   .prep-actions > button {
     flex: 1;
     min-width: 0;
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .prep-board {
+    gap: 10px;
+  }
+
+  .side-panel {
+    gap: 10px;
+  }
+
+  .prep-card {
+    border-width: 2px;
+    border-radius: 14px;
+  }
+
+  .skill-pool,
+  .team-panel {
+    padding: 14px;
+  }
+
+  .skill-pool > h2,
+  .team-panel > h2 {
+    min-height: 38px;
+    margin: -22px 0 10px;
+    padding: 0 18px;
+    font-size: 20px;
+  }
+
+  .team-panel > h2 small {
+    display: block;
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .skill-tier-block {
+    padding: 10px;
+  }
+
+  .skill-tier-block h3 {
+    font-size: 15px;
   }
 
   .prep-skill-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .prep-skill {
+    touch-action: manipulation;
+  }
+
+  .skill-gem,
+  .prep-skill.basic .skill-gem {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
   }
 
   .prep-team-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .prep-partner {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .partner-main {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .prep-portrait .pet-art {
+    height: 96px;
+  }
+
+  .partner-stats {
+    justify-self: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .partner-stats span {
+    grid-template-columns: 34px minmax(0, 1fr);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.42);
+    padding: 4px 6px;
+  }
+
+  .slot-row {
+    gap: 8px;
+  }
+
+  .prep-slot,
+  .slot-shape {
+    width: 42px;
+    height: 42px;
+  }
+
+  .equip-rule {
+    font-size: 12px;
   }
 
   .versus-panel {
     grid-template-columns: 1fr;
+    min-height: 42px;
+  }
+
+  .versus-mark {
+    writing-mode: horizontal-tb;
+    font-size: 34px;
+  }
+
+  .prep-floating-tooltip {
+    right: 10px;
+    left: 10px !important;
+    width: auto;
+    max-width: none;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .prep-skill-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .partner-main {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .prep-portrait .pet-art {
+    height: 82px;
   }
 }

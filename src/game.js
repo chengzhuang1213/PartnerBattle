@@ -443,5 +443,8 @@ app.addEventListener("mousemove", handlePrepTooltipMove);
 app.addEventListener("mouseleave", hidePrepTooltip);
 app.addEventListener("focusin", handlePrepTooltipFocus);
 app.addEventListener("focusout", hidePrepTooltip);
+app.addEventListener("touchstart", handlePrepTooltipTouchStart, { passive: true });
+app.addEventListener("touchend", handlePrepTooltipTouchEnd, { passive: true });
+app.addEventListener("touchcancel", handlePrepTooltipTouchEnd, { passive: true });
 
 renderStart();

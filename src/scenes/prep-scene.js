@@ -343,6 +343,25 @@ function handlePrepTooltipFocus(event) {
   showPrepTooltip(target.dataset.tooltip, rect.left + rect.width / 2, rect.top);
 }
 
+let prepTouchTooltipTimer = null;
+
+function handlePrepTooltipTouchStart(event) {
+  const target = event.target.closest(".prep-skill[data-tooltip], .prep-slot[data-tooltip]");
+  if (!target || !event.target.closest(".prep-screen")) return;
+
+  clearTimeout(prepTouchTooltipTimer);
+  prepTouchTooltipTimer = setTimeout(() => {
+    const touch = event.touches[0];
+    const rect = target.getBoundingClientRect();
+    showPrepTooltip(target.dataset.tooltip, touch?.clientX || rect.left + rect.width / 2, touch?.clientY || rect.top);
+  }, 320);
+}
+
+function handlePrepTooltipTouchEnd() {
+  clearTimeout(prepTouchTooltipTimer);
+  setTimeout(hidePrepTooltip, 1200);
+}
+
 function hidePrepTooltip() {
   const tooltip = document.querySelector(".prep-floating-tooltip");
   if (!tooltip) return;
