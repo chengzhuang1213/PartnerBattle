@@ -1,5 +1,7 @@
 {
+  "main": "server.js",
   "scripts": {
-    "build": "node tools/build-static.js"
+    "build": "node tools/build-static.js",
+    "start": "node server.js"
   }
 }
