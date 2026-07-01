@@ -16,17 +16,23 @@ function renderBattlePrepPage() {
   const playerWins = state.result?.playerWins || 0;
   const enemyWins = state.result?.enemyWins || 0;
   const matchIndex = state.result?.matches.length || 0;
-  const usedPlayerIds = new Set(state.result?.matches.map((match) => match.player.id) || []);
-  const usedEnemyIds = new Set(state.result?.matches.map((match) => match.enemy.id) || []);
+  const usedPlayerIds = isKofMode() ? new Set(state.result?.playerDefeatedIds || []) : new Set(state.result?.matches.map((match) => match.player.id) || []);
+  const usedEnemyIds = isKofMode() ? new Set(state.result?.enemyDefeatedIds || []) : new Set(state.result?.matches.map((match) => match.enemy.id) || []);
   const pendingPlayer = state.playerTeam.find((pet) => pet.id === state.pendingPlayerId);
   const pendingEnemy = state.enemyTeam.find((pet) => pet.id === state.pendingEnemyId);
+  const currentPlayer = currentKofPet("player");
+  const currentEnemy = currentKofPet("enemy");
   const hotseat = state.mode === "hotseat";
   const pickSide = hotseat ? state.pendingPickSide : "player";
   const shouldShowPendingPlayer = !hotseat || pickSide !== "enemy";
   const inspectedSide = state.pendingInspectSide || (shouldShowPendingPlayer && pendingPlayer ? "player" : null);
-  const inspectedPlayer = inspectedSide === "player" ? state.playerTeam.find((pet) => pet.id === state.pendingInspectId) || pendingPlayer : shouldShowPendingPlayer ? pendingPlayer : null;
-  const inspectedEnemy = inspectedSide === "enemy" ? state.enemyTeam.find((pet) => pet.id === state.pendingInspectId) || pendingEnemy : pendingEnemy;
-  const canStart = hotseat ? (pickSide === "player" ? Boolean(pendingPlayer) : Boolean(pendingEnemy)) : Boolean(pendingPlayer);
+  const inspectedPlayer = inspectedSide === "player" ? state.playerTeam.find((pet) => pet.id === state.pendingInspectId) || pendingPlayer || currentPlayer : shouldShowPendingPlayer ? pendingPlayer || currentPlayer : currentPlayer;
+  const inspectedEnemy = inspectedSide === "enemy" ? state.enemyTeam.find((pet) => pet.id === state.pendingInspectId) || pendingEnemy || currentEnemy : pendingEnemy || currentEnemy;
+  const inspectedPlayerHp = currentKofHp("player", inspectedPlayer);
+  const inspectedEnemyHp = currentKofHp("enemy", inspectedEnemy);
+  const canStart = isKofMode()
+    ? hotseat ? (pickSide === "player" ? Boolean(pendingPlayer || currentPlayer) : Boolean(pendingEnemy || currentEnemy)) : Boolean(pendingPlayer || currentPlayer)
+    : hotseat ? (pickSide === "player" ? Boolean(pendingPlayer) : Boolean(pendingEnemy)) : Boolean(pendingPlayer);
   const confirmText = hotseat && pickSide === "player" ? "确认 A 的选择" : hotseat ? "开始比赛" : "确认选择";
 
   app.innerHTML = `
@@ -36,10 +42,10 @@ function renderBattlePrepPage() {
         ${teamDock(null, usedPlayerIds, usedEnemyIds, pickSide, true)}
         <section class="battle-prep-panel">
           <div class="battle-prep-detail ${pendingPlayer ? "has-pending" : ""}">
-            ${inspectedPlayer ? battlePrepCard(inspectedPlayer, state.playerSkills, hotseat && pickSide === "enemy") : `<div class="battle-prep-empty">${hotseat && pickSide === "enemy" ? "点击玩家 A 卡片查看属性，技能保持隐藏" : "选择 1 位我方伙伴上场"}</div>`}
+            ${inspectedPlayer ? battlePrepCard(inspectedPlayer, state.playerSkills, hotseat && pickSide === "enemy", inspectedPlayerHp) : `<div class="battle-prep-empty">${hotseat && pickSide === "enemy" ? "玩家 A 胜者守擂中" : "选择 1 位我方伙伴上场"}</div>`}
           </div>
           <div class="battle-prep-opponent ${inspectedEnemy ? "has-inspect" : ""}">
-            ${inspectedEnemy ? battlePrepCard(inspectedEnemy, state.enemySkills, !hotseat || pickSide === "player") : `
+            ${inspectedEnemy ? battlePrepCard(inspectedEnemy, state.enemySkills, !hotseat || pickSide === "player", inspectedEnemyHp) : `
               <strong>${hotseat ? "玩家 B 待命" : "对方随机待命"}</strong>
               <span>${hotseat && pickSide === "enemy" ? "请选择玩家 B 的上场伙伴" : "点击对方卡片查看属性，技能保持隐藏"}</span>
             `}
@@ -129,6 +135,16 @@ function renderBattleReplayPage() {
 function combatHeader(playerWins, enemyWins, matchIndex) {
   const playerLabel = state.mode === "hotseat" ? "玩家 A" : "我方";
   const enemyLabel = state.mode === "hotseat" ? "玩家 B" : "对方 (AI)";
+  if (isKofMode()) {
+    return `
+      <header class="combat-scorebar">
+        <div class="score-side player-score"><strong>${playerLabel}</strong><span>击败：${playerWins}/3</span></div>
+        <div class="round-badge">KOF3 第 ${(matchIndex ?? 0) + 1} 战</div>
+        <div class="score-side enemy-score"><span>击败：${enemyWins}/3</span><strong>${enemyLabel}</strong></div>
+      </header>
+    `;
+  }
+
   return `
     <header class="combat-scorebar">
       <div class="score-side player-score"><strong>${playerLabel}</strong><span>胜场：${playerWins}</span></div>
@@ -140,6 +156,7 @@ function combatHeader(playerWins, enemyWins, matchIndex) {
 
 function battlePromptText(result, frame, replayDone) {
   if (!replayDone || !result.winner) return frame.text;
+  if (isKofMode()) return result.winner === "player" ? "KOF3 擂台胜利！对方 3 名伙伴全部失败" : "KOF3 擂台结束：我方 3 名伙伴全部失败";
   return result.winner === "player" ? "BO3 战斗胜利！对方失败，本局已结束" : "BO3 战斗结束：我方失败，本局已结束";
 }
 
@@ -249,13 +266,15 @@ function teamDock(frame, usedPlayerIds, usedEnemyIds, canPickSide, hideEnemySkil
 }
 
 function teamMiniCard(partner, side, frame, usedIds, canPick, hideSkills = false) {
-  const current = side === "player" ? frame?.player?.id === partner.id : frame?.enemy?.id === partner.id;
-  const hp = current ? (side === "player" ? frame.playerHp : frame.enemyHp) : partner.stats.hp;
+  const current = frame
+    ? side === "player" ? frame.player?.id === partner.id : frame.enemy?.id === partner.id
+    : isKofMode() && (side === "player" ? state.result?.currentPlayerId === partner.id : state.result?.currentEnemyId === partner.id);
+  const hp = current && frame ? (side === "player" ? frame.playerHp : frame.enemyHp) : currentKofHp(side, partner);
   const hpPercent = Math.max(0, Math.round((hp / partner.stats.hp) * 100));
   const skillList = side === "player" ? state.playerSkills : state.enemySkills;
   const skills = hideSkills ? [] : displaySkillOrder(getPetSkills(partner, skillList)).slice(0, 3);
   const used = usedIds.has(partner.id);
-  const pickable = canPick && !used;
+  const pickable = canPick && !used && !current;
   const inspectable = hideSkills || (state.mode === "hotseat" && !pickable);
   const inspecting = state.pendingInspectSide === side && state.pendingInspectId === partner.id;
   return `
@@ -266,7 +285,7 @@ function teamMiniCard(partner, side, frame, usedIds, canPick, hideSkills = false
         <div class="hp-bar"><span style="width:${hpPercent}%"></span></div>
         ${hideSkills ? `<div class="mini-skills hidden-skills">???</div>` : `<div class="mini-skills">${skills.map((skill) => `<i class="${skill.tier}">${skillIconText(skill)}</i>`).join("")}</div>`}
       </div>
-      <b>${current ? "出战中" : used ? "已上场" : pickable ? "点击上场" : "待命"}</b>
+      <b>${current ? "守擂中" : used ? "已败" : pickable ? "点击上场" : "待命"}</b>
     </article>
   `;
 }
@@ -355,16 +374,18 @@ function healBubble(side, frame) {
   return `<span class="heal-pop ${side}">+${frame.heal}</span>`;
 }
 
-function battlePrepCard(partner, skillList, hideSkills = false) {
+function battlePrepCard(partner, skillList, hideSkills = false, hp = null) {
   const skills = hideSkills ? [] : displaySkillOrder(getPetSkills(partner, skillList));
+  const currentHp = Number.isFinite(hp) ? hp : partner.stats.hp;
+  const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / partner.stats.hp) * 100)));
   return `
     <article class="battle-prep-card pool-${partner.poolKey}">
       <div class="battle-prep-card-head">
         <div class="combat-avatar">${partnerArt(partner)}</div>
         <div class="battle-prep-card-title">
           ${poolName(partner, "strong")}
-          <div class="hp-text"><small>HP</small><b>${partner.stats.hp} / ${partner.stats.hp}</b></div>
-          <div class="hp-bar"><span style="width:100%"></span></div>
+          <div class="hp-text"><small>HP</small><b>${currentHp} / ${partner.stats.hp}</b></div>
+          <div class="hp-bar"><span style="width:${hpPercent}%"></span></div>
         </div>
       </div>
       <section class="battle-prep-stat-panel">

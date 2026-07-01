@@ -10,7 +10,7 @@ const POOLS = {
     label: "橙色池",
     className: "orange",
     rangeText: "上限最高，但波动最大，可能偏科严重",
-    budget: [132, 165],
+    budget: [118, 146],
     ranges: { hp: [80, 135], atk: [18, 35], def: [8, 22], spd: [6, 20] },
     names: ["熔岩龟", "南瓜骑士", "琥珀熊"],
   },
@@ -18,7 +18,7 @@ const POOLS = {
     label: "紫色池",
     className: "purple",
     rangeText: "稳定中高，极品紫可以打烂差橙",
-    budget: [112, 140],
+    budget: [112, 136],
     ranges: { hp: [70, 105], atk: [15, 28], def: [7, 18], spd: [7, 18] },
     names: ["星尘猫", "月影狐", "魔晶鸦"],
   },
@@ -26,8 +26,8 @@ const POOLS = {
     label: "蓝色池",
     className: "blue",
     rangeText: "低总值，高特化，靠速度和克制偷赢",
-    budget: [90, 115],
-    ranges: { hp: [55, 85], atk: [10, 22], def: [4, 14], spd: [5, 16] },
+    budget: [104, 132],
+    ranges: { hp: [64, 100], atk: [12, 24], def: [7, 18], spd: [7, 18] },
     names: ["浪花犬", "晴空兔", "电鳍龙"],
   },
 };
@@ -47,6 +47,7 @@ const PLAYER2_AVATARS = [
 const ROSTER_AVATARS = [...PLAYER1_AVATARS, ...PLAYER2_AVATARS];
 
 const POOL_KEYS = ["orange", "purple", "blue"];
+const COMPETITIVE_STATS = { hp: 90, atk: 20, def: 10, spd: 10 };
 
 let nextPetId = 1;
 
@@ -117,6 +118,26 @@ function createPet(poolKey, owner, avatar) {
   };
 }
 
+function createFixedPet(poolKey, owner, avatar, stats) {
+  const pool = POOLS[poolKey];
+  const fixedStats = { ...stats };
+
+  return {
+    id: `${owner}-${poolKey}-${nextPetId++}`,
+    owner,
+    poolKey,
+    poolLabel: pool.label,
+    poolClass: pool.className,
+    name: avatar?.name || pick(pool.names),
+    avatarSrc: avatar?.src || "",
+    battleSrc: avatar?.battleSrc || "",
+    attackSrc: avatar?.attackSrc || "",
+    stats: fixedStats,
+    power: statPower(fixedStats),
+    skills: [],
+  };
+}
+
 function createTeam(owner) {
   const avatars = shuffle(owner === "enemy" ? PLAYER2_AVATARS : PLAYER1_AVATARS).slice(0, POOL_KEYS.length);
   return POOL_KEYS.map((poolKey, index) => createPet(poolKey, owner, avatars[index]));
@@ -124,5 +145,9 @@ function createTeam(owner) {
 
 function createTeamFromAvatars(owner, avatars) {
   return POOL_KEYS.map((poolKey, index) => createPet(poolKey, owner, avatars[index]));
+}
+
+function createCompetitiveTeam(owner, avatars) {
+  return POOL_KEYS.map((poolKey, index) => createFixedPet(poolKey, owner, avatars[index], COMPETITIVE_STATS));
 }
 

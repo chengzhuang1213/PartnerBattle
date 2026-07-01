@@ -7,6 +7,8 @@ let state = {
   playerSkills: [],
   enemySkills: [],
   mode: "solo",
+  battleMode: "brawl",
+  modeSelectPlayMode: null,
   rosterSelectMode: false,
   rosterCandidates: [],
   selectedAvatarIds: [],
@@ -48,6 +50,51 @@ function createInitialState(mode = "solo", selectedAvatars = null) {
     playerSkills: createSkillHand("player"),
     enemySkills,
     mode,
+    battleMode: "brawl",
+    modeSelectPlayMode: null,
+    rosterSelectMode: false,
+    rosterCandidates: [],
+    selectedAvatarIds: [],
+    buildSide: "player",
+    selectedSkillId: null,
+    selectedId: null,
+    pendingPlayerId: null,
+    pendingEnemyId: null,
+    pendingPickSide: "player",
+    pendingInspectSide: null,
+    pendingInspectId: null,
+    battlePickMode: false,
+    enemyOrder: [],
+    result: null,
+    replayIndex: 0,
+    showBattleLog: false,
+    battleLogMatchIndex: null,
+    showRules: false,
+    equipWarning: null,
+    confirmHome: false,
+    confirmBuild: false,
+    privacyGate: null,
+  };
+}
+
+function createCompetitiveInitialState(mode = "solo", selectedAvatars = null) {
+  stopBattleReplay();
+  const playerAvatars = selectedAvatars || shuffle(ROSTER_AVATARS).slice(0, POOL_KEYS.length);
+  const playerAvatarIds = new Set(playerAvatars.map((avatar) => avatar.id));
+  const enemyAvatars = ROSTER_AVATARS.filter((avatar) => !playerAvatarIds.has(avatar.id));
+  const playerTeam = createCompetitiveTeam("player", playerAvatars);
+  const enemyTeam = createCompetitiveTeam("enemy", enemyAvatars);
+  const enemySkills = createSkillHand("enemy");
+  if (mode === "solo") autoAssignEnemySkills(enemyTeam, enemySkills);
+
+  return {
+    playerTeam,
+    enemyTeam,
+    playerSkills: createSkillHand("player"),
+    enemySkills,
+    mode,
+    battleMode: "competitive",
+    modeSelectPlayMode: null,
     rosterSelectMode: false,
     rosterCandidates: [],
     selectedAvatarIds: [],
@@ -74,14 +121,58 @@ function createInitialState(mode = "solo", selectedAvatars = null) {
 }
 
 function startGame() {
-  startRosterSelect("solo");
+  renderBattleModeSelect("solo");
 }
 
 function startHotseatGame() {
-  startRosterSelect("hotseat");
+  renderBattleModeSelect("hotseat");
 }
 
-function startRosterSelect(mode) {
+function renderBattleModeSelect(playMode) {
+  stopBattleReplay();
+  state.modeSelectPlayMode = playMode;
+  const modeText = playMode === "hotseat" ? "双人同屏" : "AI 对战";
+  app.innerHTML = `
+    <section class="start-screen mode-choice-screen">
+      <header class="start-title">
+        <div class="sparkle-row" aria-hidden="true">
+          <span>✦</span>
+          <span>✧</span>
+          <span>✦</span>
+        </div>
+        <h1>${modeText}</h1>
+        <p>选择本局规则</p>
+      </header>
+
+      <main class="mode-select battle-mode-select">
+        <button class="mode-card competitive" data-battle-mode="competitive" type="button">
+          <span class="mode-icon">◆</span>
+          <strong>竞技模式</strong>
+          <small>选择角色 · 固定属性</small>
+        </button>
+        <button class="mode-card brawl" data-battle-mode="brawl" type="button">
+          <span class="mode-icon">●</span>
+          <strong>乱斗模式</strong>
+          <small>KOF3 擂台赛</small>
+        </button>
+      </main>
+
+      <footer class="start-menu">
+        <button class="menu-button" data-mode-back type="button">
+          <span>↩</span>
+          返回
+        </button>
+      </footer>
+    </section>
+  `;
+}
+
+function startBattleMode(battleMode) {
+  const playMode = state.modeSelectPlayMode || "solo";
+  startRosterSelect(playMode, battleMode);
+}
+
+function startRosterSelect(mode, battleMode = "brawl") {
   stopBattleReplay();
   state = {
     playerTeam: [],
@@ -89,6 +180,8 @@ function startRosterSelect(mode) {
     playerSkills: [],
     enemySkills: [],
     mode,
+    battleMode,
+    modeSelectPlayMode: null,
     rosterSelectMode: true,
     rosterCandidates: ROSTER_AVATARS,
     selectedAvatarIds: [],
@@ -121,7 +214,8 @@ function confirmRosterSelect() {
     .map((id) => state.rosterCandidates.find((avatar) => avatar.id === id))
     .filter(Boolean);
   const mode = state.mode;
-  state = createInitialState(mode, selected);
+  const battleMode = state.battleMode;
+  state = battleMode === "competitive" ? createCompetitiveInitialState(mode, selected) : createInitialState(mode, selected);
   if (mode === "hotseat") {
     state.privacyGate = {
       title: "玩家 A 开始 Build",
@@ -150,14 +244,18 @@ function randomRosterSelect() {
 function renderRosterSelect() {
   const selected = new Set(state.selectedAvatarIds);
   const canConfirm = state.selectedAvatarIds.length === POOL_KEYS.length;
-  const modeText = state.mode === "hotseat" ? "双人同屏" : "单人模式";
+  const playModeText = state.mode === "hotseat" ? "双人同屏" : "单人模式";
+  const modeText = state.battleMode === "competitive" ? `${playModeText} · 竞技模式` : `${playModeText} · 乱斗模式`;
+  const rosterHint = state.battleMode === "competitive"
+    ? "选择 3 名角色加入队伍，剩下 3 名会成为对手。开局属性固定为 HP 90 / ATK 20 / DEF 10 / SPD 10。"
+    : "选择 3 名角色加入队伍，剩下 3 名会成为对手。";
   app.innerHTML = `
     <section class="roster-screen">
       <header class="roster-header">
         <button class="roster-back" data-roster-back type="button">返回</button>
         <div>
           <h1>${modeText} 选择队伍</h1>
-          <p>选择 3 名角色加入队伍，剩下 3 名会成为对手。</p>
+          <p>${rosterHint}</p>
         </div>
         <strong>${state.selectedAvatarIds.length}/3</strong>
       </header>
@@ -206,6 +304,8 @@ app.addEventListener("click", (event) => {
   const confirmBuildButton = event.target.closest("[data-confirm-build]");
   const startButton = event.target.closest("[data-start]");
   const startHotseatButton = event.target.closest("[data-start-hotseat]");
+  const battleModeButton = event.target.closest("[data-battle-mode]");
+  const modeBackButton = event.target.closest("[data-mode-back]");
   const rosterAvatarButton = event.target.closest("[data-roster-avatar]");
   const rosterRandomButton = event.target.closest("[data-roster-random]");
   const rosterConfirmButton = event.target.closest("[data-roster-confirm]");
@@ -269,6 +369,14 @@ app.addEventListener("click", (event) => {
   if (rerollPlayerButton) rerollPlayerStats();
   if (startButton) startGame();
   if (startHotseatButton) startHotseatGame();
+  if (battleModeButton) {
+    startBattleMode(battleModeButton.dataset.battleMode);
+    return;
+  }
+  if (modeBackButton) {
+    returnHome();
+    return;
+  }
   if (rosterAvatarButton) {
     toggleRosterAvatar(rosterAvatarButton.dataset.rosterAvatar);
     return;
@@ -420,6 +528,26 @@ function continueBattleFlow() {
     else startGame();
     return;
   }
+
+  if (isKofMode()) {
+    state.battlePickMode = true;
+    state.pendingPlayerId = null;
+    state.pendingEnemyId = null;
+    state.pendingInspectSide = null;
+    state.pendingInspectId = null;
+
+    const currentPlayer = currentKofPet("player");
+    const currentEnemy = currentKofPet("enemy");
+    if (state.mode !== "hotseat" && currentPlayer && !currentEnemy) {
+      startSelectedBattleMatch();
+      return;
+    }
+
+    state.pendingPickSide = currentPlayer && !currentEnemy ? "enemy" : "player";
+    renderBattlePage();
+    return;
+  }
+
   state.battlePickMode = true;
   state.pendingPlayerId = null;
   state.pendingEnemyId = null;

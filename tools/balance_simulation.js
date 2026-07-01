@@ -44,6 +44,7 @@ const groups = context.__skillGroups.map((group) => ({
 }));
 const poolKeys = ["orange", "purple", "blue"];
 const priorityGroups = new Set(["combo", "reflect", "revive", "parry", "lifesteal", "regen", "poison", "counter"]);
+const CROSS_QUALITY_ITERATIONS = 200;
 
 function skill(groupKey, tier, owner) {
   const template = context.__skillGroups.find((item) => item.group === groupKey)[tier];
@@ -68,6 +69,17 @@ function runDuel(playerPet, enemyPet, playerSkills, enemySkills, matchIndex = 0)
   context.state.playerSkills = playerSkills;
   context.state.enemySkills = enemySkills;
   return context.simulateBattle(playerPet, enemyPet, matchIndex, 0, 0);
+}
+
+function shuffledGroups() {
+  return [...groups].sort(() => Math.random() - 0.5);
+}
+
+function randomLegalSkills(owner, highCount, basicCount) {
+  const selected = shuffledGroups().slice(0, highCount + basicCount);
+  const highSkills = selected.slice(0, highCount).map((group) => skill(group.group, "high", owner));
+  const basicSkills = selected.slice(highCount).map((group) => skill(group.group, "basic", owner));
+  return [...highSkills, ...basicSkills].sort(() => Math.random() - 0.5);
 }
 
 function emptyStats(label = "") {
@@ -316,6 +328,95 @@ function realEnvironment() {
     }));
 }
 
+const crossQualityScenarios = [
+  {
+    match: "蓝（无技能） vs 紫（无技能）",
+    playerPool: "blue",
+    enemyPool: "purple",
+    playerHigh: 0,
+    playerBasic: 0,
+    enemyHigh: 0,
+    enemyBasic: 0,
+    targetText: "25%~35%",
+    targetMin: 0.25,
+    targetMax: 0.35,
+  },
+  {
+    match: "蓝（1高1初） vs 紫（无技能）",
+    playerPool: "blue",
+    enemyPool: "purple",
+    playerHigh: 1,
+    playerBasic: 1,
+    enemyHigh: 0,
+    enemyBasic: 0,
+    targetText: "45%~55%",
+    targetMin: 0.45,
+    targetMax: 0.55,
+  },
+  {
+    match: "蓝（3初） vs 紫（无技能）",
+    playerPool: "blue",
+    enemyPool: "purple",
+    playerHigh: 0,
+    playerBasic: 3,
+    enemyHigh: 0,
+    enemyBasic: 0,
+    targetText: "50%左右",
+    targetMin: 0.45,
+    targetMax: 0.55,
+  },
+  {
+    match: "紫（1高2初） vs 橙（无技能）",
+    playerPool: "purple",
+    enemyPool: "orange",
+    playerHigh: 1,
+    playerBasic: 2,
+    enemyHigh: 0,
+    enemyBasic: 0,
+    targetText: "45%~55%",
+    targetMin: 0.45,
+    targetMax: 0.55,
+  },
+];
+
+function assignSkillsForScenario(petItem, owner, highCount, basicCount) {
+  const skills = randomLegalSkills(owner, highCount, basicCount);
+  petItem.skills = skills.map((item) => item.id);
+  return skills;
+}
+
+function crossQualityFixedTests() {
+  return crossQualityScenarios.map((scenario) => {
+    let wins = 0;
+    let totalDamage = 0;
+    let totalTaken = 0;
+
+    for (let i = 0; i < CROSS_QUALITY_ITERATIONS; i += 1) {
+      const player = pet(scenario.playerPool, "player", i);
+      const enemy = pet(scenario.enemyPool, "enemy", i);
+      const playerSkills = assignSkillsForScenario(player, "player", scenario.playerHigh, scenario.playerBasic);
+      const enemySkills = assignSkillsForScenario(enemy, "enemy", scenario.enemyHigh, scenario.enemyBasic);
+      const result = runDuel(player, enemy, playerSkills, enemySkills);
+      const metrics = collectSideMetrics(result, "player");
+
+      if (result.winner === "player") wins += 1;
+      totalDamage += metrics.damage;
+      totalTaken += metrics.taken;
+    }
+
+    const winRate = wins / CROSS_QUALITY_ITERATIONS;
+    return {
+      对局: scenario.match,
+      场次: CROSS_QUALITY_ITERATIONS,
+      目标胜率: scenario.targetText,
+      当前胜率: rate(wins, CROSS_QUALITY_ITERATIONS),
+      平均伤害: avg(totalDamage, CROSS_QUALITY_ITERATIONS),
+      平均承伤: avg(totalTaken, CROSS_QUALITY_ITERATIONS),
+      结果: winRate >= scenario.targetMin && winRate <= scenario.targetMax ? "达标" : "未达标",
+    };
+  });
+}
+
 console.log(`# Balance simulation`);
 console.log(`iterations=${ITERATIONS}, seed=${SEED}`);
 
@@ -341,4 +442,14 @@ printTable("四、真实环境测试", realEnvironment(), [
   "平均反伤",
   "平均复活次数",
   "评价",
+]);
+
+printTable("五、跨品质固定测试（每组 200 场）", crossQualityFixedTests(), [
+  "对局",
+  "场次",
+  "目标胜率",
+  "当前胜率",
+  "平均伤害",
+  "平均承伤",
+  "结果",
 ]);

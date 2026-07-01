@@ -194,14 +194,16 @@
 .prep-skill-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 12px;
 }
 
 .prep-skill {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 3px;
+  align-content: start;
+  gap: 6px;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -232,6 +234,10 @@
   opacity: 0.36;
 }
 
+.prep-skill:disabled:not(.is-readonly) .skill-name {
+  opacity: 0.58;
+}
+
 .enemy-pool .prep-skill {
   cursor: default;
 }
@@ -260,6 +266,19 @@
 
 .prep-skill.high .skill-gem {
   background: linear-gradient(145deg, #ff756d, #e2404d);
+}
+
+.skill-name {
+  display: block;
+  width: min(86px, 100%);
+  min-height: 30px;
+  color: var(--side-strong);
+  font-size: 13px;
+  font-weight: 1000;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .team-panel {
@@ -543,7 +562,7 @@
   font-weight: 900;
   line-height: 1.45;
   text-align: left;
-  white-space: normal;
+  white-space: pre-line;
   overflow-wrap: anywhere;
   pointer-events: none;
   box-shadow: 0 12px 26px rgba(104, 82, 167, 0.18);

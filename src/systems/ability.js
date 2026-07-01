@@ -27,6 +27,11 @@ const SKILL_LIMITS = {
   blue: { high: 1, basic: 3, text: "3 初级，或 1 高级 + 1 初级" },
 };
 
+const COMPETITIVE_SKILL_LIMITS = {
+  perPet: { high: 2, basic: 3 },
+  teamHigh: 4,
+};
+
 let nextSkillId = 1;
 
 function createSkillHand(owner) {
@@ -49,13 +54,19 @@ function createSkill(owner, group, template) {
   };
 }
 
-function canAssignSkill(pet, skill, skillList) {
+function canAssignSkill(pet, skill, skillList, limits = null) {
   const assigned = getPetSkills(pet, skillList);
   const highCount = assigned.filter((item) => item.tier === "high").length;
   const basicCount = assigned.filter((item) => item.tier === "basic").length;
   const hasSameGroup = assigned.some((item) => item.group === skill.group);
 
   if (hasSameGroup) return false;
+
+  if (limits) {
+    const teamHighCount = skillList.filter((item) => item.tier === "high" && item.assignedPetId).length;
+    if (skill.tier === "high" && teamHighCount >= limits.teamHigh) return false;
+    return skill.tier === "high" ? highCount < limits.perPet.high : basicCount < limits.perPet.basic;
+  }
 
   if (pet.poolKey === "blue") {
     if (skill.tier === "high") return highCount < 1 && basicCount <= 1;

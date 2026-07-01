@@ -189,8 +189,20 @@
   background: linear-gradient(180deg, rgba(99, 166, 255, 0.94), rgba(50, 104, 224, 0.92));
 }
 
+.mode-card.competitive {
+  background: linear-gradient(180deg, rgba(255, 146, 91, 0.95), rgba(226, 84, 91, 0.92));
+}
+
+.mode-card.brawl {
+  background: linear-gradient(180deg, rgba(90, 185, 255, 0.95), rgba(75, 105, 224, 0.92));
+}
+
 .mode-card.online {
   background: linear-gradient(180deg, rgba(170, 141, 255, 0.9), rgba(111, 83, 216, 0.86));
+}
+
+.battle-mode-select {
+  grid-template-columns: repeat(2, minmax(220px, 300px));
 }
 
 .mode-card:disabled {

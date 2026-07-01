@@ -86,9 +86,9 @@
 
 | 池子 key | 显示名 | 战力预算 | hp | atk | def | spd | 定位 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| `orange` | 橙色池 | 132-165 | 80-135 | 18-35 | 8-22 | 6-20 | 上限最高，波动最大。 |
-| `purple` | 紫色池 | 112-140 | 70-105 | 15-28 | 7-18 | 7-18 | 稳定中高。 |
-| `blue` | 蓝色池 | 90-115 | 55-85 | 10-22 | 4-14 | 5-16 | 低总值，高特化。 |
+| `orange` | 橙色池 | 118-146 | 80-135 | 18-35 | 8-22 | 6-20 | 上限最高，仍保留强势但不再碾压低一档带技能伙伴。 |
+| `purple` | 紫色池 | 112-136 | 70-105 | 15-28 | 7-18 | 7-18 | 稳定中高，作为乱斗模式的中轴。 |
+| `blue` | 蓝色池 | 104-132 | 64-100 | 12-24 | 7-18 | 7-18 | 低一档但不绝望，带技能后应能挑战裸紫。 |
 
 ### 生成规则
 
@@ -299,4 +299,5 @@ start-game.bat
 5. 改战斗节奏：检查 `src/systems/battle-system.js` 的 12 回合、`src/scenes/battle-scene.js` 的回放延迟。
 6. 改伤害体验：检查 `src/systems/battle-system.js` 的攻击公式、暴击率、暴击倍率，以及 `src/systems/ability.js` 的反震/吸血/复活/中毒等联动。
 7. 改队伍人数：检查 `src/data/game-data.js` 的 `POOL_KEYS`、头像抽取数量、`src/systems/battle-system.js` 的 BO3 上场逻辑、`styles/prep-scene.css` / `styles/battle-scene.css` 的卡片布局。
-8. 改端口或部署方式：检查 `server.js`、`start-game.bat`、HTML 引用路径。
+8. 改乱斗模式跨品质平衡：跑 `tools/balance_simulation.js`，重点看第五张“跨品质固定测试（每组 200 场）”。
+9. 改端口或部署方式：检查 `server.js`、`start-game.bat`、HTML 引用路径。

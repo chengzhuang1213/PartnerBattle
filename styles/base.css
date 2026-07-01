@@ -493,7 +493,7 @@ button {
   font-weight: 900;
   line-height: 1.55;
   text-align: left;
-  white-space: normal;
+  white-space: pre-line;
   overflow-wrap: anywhere;
   word-break: break-word;
   pointer-events: none;

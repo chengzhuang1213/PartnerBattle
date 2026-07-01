@@ -54,6 +54,11 @@ function inspectBattlePet(side, id) {
 }
 
 function startSelectedBattleMatch() {
+  if (isKofMode()) {
+    startSelectedKofMatch();
+    return;
+  }
+
   if (!state.battlePickMode || state.result?.winner || !state.pendingPlayerId) return;
 
   if (state.mode === "hotseat" && state.pendingPickSide === "player") {
@@ -90,6 +95,49 @@ function startSelectedBattleMatch() {
   startBattleReplay();
 }
 
+function startSelectedKofMatch() {
+  if (!state.battlePickMode || state.result?.winner) return;
+
+  const currentPlayer = currentKofPet("player");
+  const currentEnemy = currentKofPet("enemy");
+  const needsPlayer = !currentPlayer;
+  const needsEnemy = !currentEnemy;
+
+  if (needsPlayer && !state.pendingPlayerId) return;
+
+  if (state.mode === "hotseat" && state.pendingPickSide === "player" && needsEnemy) {
+    state.pendingPickSide = "enemy";
+    state.pendingInspectSide = null;
+    state.pendingInspectId = null;
+    state.privacyGate = {
+      title: "玩家 B 选择出战",
+      body: "玩家 A 请闭眼。确认后玩家 B 选择本战上场伙伴。",
+      action: "start-battle-pick-enemy",
+    };
+    renderBattlePage();
+    return;
+  }
+
+  if (state.mode === "hotseat" && needsEnemy && !state.pendingEnemyId) return;
+
+  const player = currentPlayer || availablePlayerTeam().find((pet) => pet.id === state.pendingPlayerId);
+  const enemies = availableEnemyTeam();
+  const enemy = currentEnemy || (state.mode === "hotseat"
+    ? enemies.find((pet) => pet.id === state.pendingEnemyId)
+    : enemies.length ? pick(enemies) : null);
+  if (!player || !enemy) return;
+
+  const startIndex = state.result.events.length;
+  appendBattleMatch(player, enemy);
+  state.battlePickMode = false;
+  state.pendingPlayerId = null;
+  state.pendingEnemyId = null;
+  state.pendingPickSide = "player";
+  state.replayIndex = startIndex;
+  renderBattlePage();
+  startBattleReplay();
+}
+
 function createBattleSession() {
   return {
     player: null,
@@ -99,32 +147,76 @@ function createBattleSession() {
     log: [],
     playerWins: 0,
     enemyWins: 0,
+    currentPlayerId: null,
+    currentEnemyId: null,
+    currentPlayerHp: null,
+    currentEnemyHp: null,
+    playerDefeatedIds: [],
+    enemyDefeatedIds: [],
     winner: null,
   };
 }
 
 function availablePlayerTeam() {
+  if (isKofMode()) {
+    const defeatedIds = new Set(state.result?.playerDefeatedIds || []);
+    const currentId = state.result?.currentPlayerId;
+    return state.playerTeam.filter((pet) => !defeatedIds.has(pet.id) && pet.id !== currentId);
+  }
+
   const usedIds = new Set(state.result?.matches.map((match) => match.player.id) || []);
   return state.playerTeam.filter((pet) => !usedIds.has(pet.id));
 }
 
 function availableEnemyTeam() {
+  if (isKofMode()) {
+    const defeatedIds = new Set(state.result?.enemyDefeatedIds || []);
+    const currentId = state.result?.currentEnemyId;
+    return state.enemyTeam.filter((pet) => !defeatedIds.has(pet.id) && pet.id !== currentId);
+  }
+
   const usedIds = new Set(state.result?.matches.map((match) => match.enemy.id) || []);
   return state.enemyTeam.filter((pet) => !usedIds.has(pet.id));
+}
+
+function isKofMode() {
+  return state.battleMode === "brawl";
+}
+
+function currentKofPet(side) {
+  if (!isKofMode() || !state.result) return null;
+  const id = side === "player" ? state.result.currentPlayerId : state.result.currentEnemyId;
+  const team = side === "player" ? state.playerTeam : state.enemyTeam;
+  return team.find((pet) => pet.id === id) || null;
+}
+
+function currentKofHp(side, pet) {
+  if (!isKofMode() || !state.result || !pet) return pet?.stats.hp || 0;
+  const currentId = side === "player" ? state.result.currentPlayerId : state.result.currentEnemyId;
+  if (currentId !== pet.id) return pet.stats.hp;
+  const hp = side === "player" ? state.result.currentPlayerHp : state.result.currentEnemyHp;
+  return Number.isFinite(hp) ? hp : pet.stats.hp;
 }
 
 function appendBattleMatch(player, enemy) {
   const result = state.result || createBattleSession();
   const matchIndex = result.matches.length;
-  const match = simulateBattle(player, enemy, matchIndex, result.playerWins, result.enemyWins);
+  const match = simulateBattle(player, enemy, matchIndex, result.playerWins, result.enemyWins, {
+    playerHp: isKofMode() ? currentKofHp("player", player) : null,
+    enemyHp: isKofMode() ? currentKofHp("enemy", enemy) : null,
+  });
 
   result.matches.push(match);
   result.log.push(...match.log);
   result.events.push(...match.events);
-  if (match.winner === "player") result.playerWins += 1;
+
+  if (isKofMode()) updateKofResult(result, match);
+  else if (match.winner === "player") result.playerWins += 1;
   else result.enemyWins += 1;
 
-  const scoreText = `BO3 当前比分：玩家 ${result.playerWins} - ${result.enemyWins} 电脑。`;
+  const scoreText = isKofMode()
+    ? `KOF3 擂台：玩家击败 ${result.playerWins}/3，对方击败 ${result.enemyWins}/3。`
+    : `BO3 当前比分：玩家 ${result.playerWins} - ${result.enemyWins} 电脑。`;
   result.log.push(scoreText);
   result.events.push({
     type: "matchResult",
@@ -149,14 +241,37 @@ function appendBattleMatch(player, enemy) {
 
   result.player = match.player;
   result.enemy = match.enemy;
-  if (result.playerWins >= 2) result.winner = "player";
-  if (result.enemyWins >= 2) result.winner = "enemy";
+  if (!isKofMode() && result.playerWins >= 2) result.winner = "player";
+  if (!isKofMode() && result.enemyWins >= 2) result.winner = "enemy";
   state.result = result;
 }
 
-function simulateBattle(playerPet, enemyPet, matchIndex, playerWins, enemyWins) {
+function updateKofResult(result, match) {
+  if (match.winner === "player") {
+    result.enemyDefeatedIds = [...new Set([...result.enemyDefeatedIds, match.enemy.id])];
+    result.currentPlayerId = match.player.id;
+    result.currentPlayerHp = match.playerHp;
+    result.currentEnemyId = null;
+    result.currentEnemyHp = null;
+  } else {
+    result.playerDefeatedIds = [...new Set([...result.playerDefeatedIds, match.player.id])];
+    result.currentPlayerId = null;
+    result.currentPlayerHp = null;
+    result.currentEnemyId = match.enemy.id;
+    result.currentEnemyHp = match.enemyHp;
+  }
+
+  result.playerWins = result.enemyDefeatedIds.length;
+  result.enemyWins = result.playerDefeatedIds.length;
+  if (result.enemyDefeatedIds.length >= state.enemyTeam.length) result.winner = "player";
+  if (result.playerDefeatedIds.length >= state.playerTeam.length) result.winner = "enemy";
+}
+
+function simulateBattle(playerPet, enemyPet, matchIndex, playerWins, enemyWins, initialHp = {}) {
   const player = createCombatant(playerPet, state.playerSkills, "player");
   const enemy = createCombatant(enemyPet, state.enemySkills, "enemy");
+  if (Number.isFinite(initialHp.playerHp)) player.hp = Math.max(1, Math.min(player.maxHp, initialHp.playerHp));
+  if (Number.isFinite(initialHp.enemyHp)) enemy.hp = Math.max(1, Math.min(enemy.maxHp, initialHp.enemyHp));
   const ctx = {
     log: [],
     events: [],
@@ -173,7 +288,7 @@ function simulateBattle(playerPet, enemyPet, matchIndex, playerWins, enemyWins) 
   applyOpeningStatModifiers(enemy, ctx);
 
   for (let round = 1; round <= 12; round += 1) {
-    recordEvent(ctx, `BO3 第 ${matchIndex + 1} 局，第 ${round} 回合。`, { type: "round", round });
+    recordEvent(ctx, `${isKofMode() ? "KOF3" : "BO3"} 第 ${matchIndex + 1} ${isKofMode() ? "战" : "局"}，第 ${round} 回合。`, { type: "round", round });
     applyRegen(player, ctx);
     applyRegen(enemy, ctx);
 
@@ -196,7 +311,7 @@ function simulateBattle(playerPet, enemyPet, matchIndex, playerWins, enemyWins) 
   const winner = player.hp === enemy.hp ? (playerScore >= enemyScore ? "player" : "enemy") : player.hp > enemy.hp ? "player" : "enemy";
 
   recordEvent(ctx, `${player.name} 剩余生命 ${Math.max(0, player.hp)}，${enemy.name} 剩余生命 ${Math.max(0, enemy.hp)}。`, { type: "summary" });
-  recordEvent(ctx, winner === "player" ? "玩家赢下这一局。" : "电脑赢下这一局。", { type: "win", winner });
+  recordEvent(ctx, winner === "player" ? "玩家赢下这一战。" : "电脑赢下这一战。", { type: "win", winner });
 
   return {
     winner,
