@@ -48,18 +48,19 @@
 
 .prep-header h1 {
   margin: 0;
-  color: #ffffff;
+  color: #151827;
   font-size: 38px;
   font-weight: 1000;
   line-height: 1;
-  text-shadow: 0 3px 0 #7b5fd8, 0 8px 18px rgba(113, 87, 202, 0.28);
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.58);
 }
 
 .prep-header p {
   margin: 8px 0 0;
-  color: #79669f;
+  color: #151827;
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 1000;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.58);
 }
 
 .prep-back,

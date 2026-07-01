@@ -390,6 +390,9 @@ function hiddenSkillDetail() {
         <span>对方技能将在进入正式战斗后公开。</span>
       </div>
     </div>
+    <div class="battle-prep-ai-note">
+      AI 会随机选择出战伙伴
+    </div>
   `;
 }
 

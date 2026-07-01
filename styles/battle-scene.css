@@ -332,6 +332,19 @@
   background: linear-gradient(180deg, #ffffff, #f3f6ff);
 }
 
+.battle-prep-ai-note {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  border: 2px dashed rgba(124, 139, 185, 0.24);
+  border-radius: 14px;
+  background: rgba(244, 247, 255, 0.72);
+  color: #5f6b9d;
+  font-size: 22px;
+  font-weight: 1000;
+  text-align: center;
+}
+
 .battle-prep-skill strong {
   display: block;
   color: #4c5790;
