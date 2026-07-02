@@ -110,10 +110,37 @@
 }
 
 .prep-card {
-  border: 3px solid var(--side-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 12px 24px rgba(124, 106, 182, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 22px;
+  --panel-bg-size: calc(100% - 18px) calc(100% - 18px);
+  background: transparent;
+  box-shadow: none;
+}
+
+.prep-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    var(--ornate-panel-image) center / var(--panel-bg-size) no-repeat;
+  pointer-events: none;
+}
+
+.player-pool::before {
+  transform: scaleX(-1);
+}
+
+.player-side .team-panel::before {
+  transform: scaleX(-1);
+}
+
+.prep-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .player-side {
@@ -121,6 +148,8 @@
   --side-mid: #ff8ac4;
   --side-soft: #fff0f7;
   --side-border: rgba(240, 102, 170, 0.5);
+  --ornate-panel-image: url("../assets/ui-panels/ornate-panel-player.png");
+  --ornate-tier-image: url("../assets/ui-panels/ornate-tier-player.png");
 }
 
 .enemy-side {
@@ -128,30 +157,72 @@
   --side-mid: #78adff;
   --side-soft: #eef6ff;
   --side-border: rgba(94, 151, 239, 0.5);
+  --ornate-panel-image: url("../assets/ui-panels/ornate-panel-enemy.png");
+  --ornate-tier-image: url("../assets/ui-panels/ornate-tier-enemy.png");
+}
+
+.player-side.is-inactive-build {
+  --side-strong: #c884aa;
+  --side-mid: #edbad4;
+  --side-soft: #fff7fb;
+  --side-border: rgba(210, 139, 178, 0.34);
+}
+
+.enemy-side.is-inactive-build {
+  --side-strong: #6f9edc;
+  --side-mid: #9fc4f5;
+  --side-soft: #f5f9ff;
+  --side-border: rgba(125, 163, 222, 0.34);
+}
+
+.side-panel.is-inactive-build .prep-card {
+  filter: saturate(0.92) brightness(1);
+  box-shadow: none;
+}
+
+.side-panel.is-inactive-build .team-panel > h2 small {
+  opacity: 0.72;
 }
 
 .skill-pool {
-  padding: 18px 20px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 34px 52px 42px;
+}
+
+.enemy-pool::before {
+  clip-path: inset(0 0 16px 0);
+}
+
+.enemy-pool {
+  transform: translateY(-10px);
 }
 
 .skill-pool > h2,
 .team-panel > h2 {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  width: fit-content;
   min-height: 46px;
-  margin: -28px 0 14px;
+  margin: -34px auto -2px;
   padding: 0 34px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--side-mid), var(--side-strong));
+  border: 2px solid color-mix(in srgb, var(--side-strong), #ffffff 48%);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 45%),
+    linear-gradient(180deg, var(--side-mid), var(--side-strong));
   color: #fff;
   font-size: 26px;
   font-weight: 1000;
   line-height: 1;
-  box-shadow: 0 8px 18px rgba(105, 82, 174, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 18px rgba(105, 82, 174, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .team-panel > h2 {
-  margin-top: -20px;
+  margin-top: -24px;
+  margin-bottom: 14px;
   font-size: 22px;
 }
 
@@ -163,20 +234,36 @@
 }
 
 .skill-tier-block {
-  margin-top: 12px;
-  padding: 13px 14px 14px;
-  border: 2px solid color-mix(in srgb, var(--side-border), #ffffff 20%);
-  border-radius: 14px;
+  margin-top: 0;
+  padding: 40px 48px 30px;
+  border: 0;
+  border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.42)),
-    var(--side-soft);
+    var(--ornate-tier-image) center / 100% 100% no-repeat;
+  box-shadow: 0 8px 16px rgba(95, 82, 150, 0.08);
+}
+
+.player-pool .skill-tier-block {
+  transform: translateX(-36px);
+}
+
+.skill-pool .skill-tier-block:first-of-type {
+  margin-top: 12px;
+  min-height: 176px;
+  padding-top: 38px;
+  padding-bottom: 26px;
+}
+
+.skill-pool .skill-tier-block:last-of-type {
+  margin-top: -2px;
+  min-height: 290px;
 }
 
 .skill-tier-block h3 {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   color: var(--side-strong);
   font-size: 18px;
   font-weight: 1000;
@@ -194,8 +281,9 @@
 .prep-skill-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  column-gap: 8px;
-  row-gap: 12px;
+  column-gap: 16px;
+  row-gap: 16px;
+  transform: translateX(12px);
 }
 
 .prep-skill {
@@ -204,6 +292,7 @@
   justify-items: center;
   align-content: start;
   gap: 6px;
+  height: 90px;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -226,20 +315,80 @@
   box-shadow: 0 0 0 5px rgba(246, 95, 159, 0.32), 0 10px 20px rgba(104, 82, 167, 0.22);
 }
 
-.prep-skill:disabled:not(.is-readonly) {
+.prep-skill.is-available {
+  border-radius: 12px;
+}
+
+.prep-skill.is-available:hover .skill-gem,
+.prep-skill.is-available:focus-visible .skill-gem {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(104, 82, 167, 0.24), 0 0 0 4px rgba(255, 255, 255, 0.76);
+}
+
+.prep-skill.is-available:focus-visible {
+  outline: 3px solid rgba(255, 126, 188, 0.46);
+  outline-offset: 3px;
+}
+
+.prep-skill.is-equipped {
   opacity: 1;
 }
 
-.prep-skill:disabled:not(.is-readonly) .skill-gem {
-  opacity: 0.36;
+.prep-skill.is-equipped .skill-gem {
+  opacity: 0.34;
+  filter: saturate(0.72);
 }
 
-.prep-skill:disabled:not(.is-readonly) .skill-name {
-  opacity: 0.58;
+.prep-skill.is-equipped .skill-name {
+  opacity: 0.62;
+}
+
+.prep-skill.is-equipped .skill-state-text {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  min-height: 18px;
+  padding: 0 7px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #7f719f;
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.skill-state-mark {
+  position: absolute;
+  top: 29px;
+  right: calc(50% - 31px);
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #38b76d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  box-shadow: 0 5px 10px rgba(64, 54, 114, 0.16);
 }
 
 .enemy-pool .prep-skill {
   cursor: default;
+}
+
+.side-panel.is-inactive-build .prep-skill.is-unavailable .skill-gem {
+  opacity: 0.84;
+  filter: saturate(0.88);
+}
+
+.side-panel.is-inactive-build .prep-skill.is-unavailable .skill-name {
+  opacity: 0.86;
 }
 
 .skill-gem {
@@ -255,6 +404,7 @@
   font-weight: 1000;
   text-shadow: 0 2px 4px rgba(69, 42, 99, 0.24);
   box-shadow: 0 8px 14px rgba(87, 66, 145, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.42);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease, filter 120ms ease;
 }
 
 .prep-skill.basic .skill-gem {
@@ -282,21 +432,25 @@
 }
 
 .team-panel {
-  padding: 18px 22px 22px;
+  padding: 38px 76px 50px;
+  --panel-bg-size: calc(100% - 40px) calc(100% - 36px);
 }
 
 .prep-team-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
+  justify-items: center;
 }
 
 .prep-partner {
   position: relative;
   display: grid;
-  gap: 12px;
-  min-height: 270px;
-  padding: 16px 16px 14px;
+  width: 100%;
+  max-width: 214px;
+  gap: 10px;
+  min-height: 250px;
+  padding: 13px 14px 12px;
   border: 2px solid rgba(179, 139, 219, 0.42);
   border-radius: 12px;
   box-shadow: 0 8px 18px rgba(112, 93, 167, 0.14);
@@ -1304,7 +1458,7 @@
   .skill-pool > h2,
   .team-panel > h2 {
     min-height: 38px;
-    margin: -22px 0 10px;
+    margin: -22px auto 10px;
     padding: 0 18px;
     font-size: 20px;
   }
@@ -1317,7 +1471,12 @@
   }
 
   .skill-tier-block {
-    padding: 10px;
+    padding: 28px 24px 22px;
+  }
+
+  .skill-pool .skill-tier-block:first-of-type,
+  .skill-pool .skill-tier-block:last-of-type {
+    min-height: 0;
   }
 
   .skill-tier-block h3 {

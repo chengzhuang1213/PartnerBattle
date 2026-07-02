@@ -51,7 +51,19 @@ function renderBattleModeSelect(playMode) {
 
 function startBattleMode(battleMode) {
   const playMode = state.modeSelectPlayMode || "solo";
-  startRosterSelect(playMode, battleMode);
+  startRandomBuild(playMode, battleMode);
+}
+
+function startRandomBuild(mode, battleMode = "brawl") {
+  state = battleMode === "competitive" ? createCompetitiveInitialState(mode) : createInitialState(mode);
+  if (mode === "hotseat") {
+    state.privacyGate = {
+      title: "玩家 A 开始 Build",
+      body: "玩家 B 请闭眼。确认后屏幕亮起，玩家 A 进行技能分配。",
+      action: "start-build-a",
+    };
+  }
+  renderGame();
 }
 
 function startRosterSelect(mode, battleMode = "brawl") {

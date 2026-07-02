@@ -25,7 +25,7 @@ function renderGame() {
       </header>
 
       <main class="prep-board">
-        <section class="side-panel player-side">
+        <section class="side-panel player-side ${playerInteractive ? "is-active-build" : "is-inactive-build"}">
           ${skillPool(state.playerSkills, state.playerTeam, playerTitle, playerInteractive)}
           ${teamPanel(state.playerTeam, state.playerSkills, hotseat ? "玩家 A 伙伴" : "我的伙伴", playerInteractive)}
         </section>
@@ -34,7 +34,7 @@ function renderGame() {
           <div class="versus-mark">VS</div>
         </section>
 
-        <section class="side-panel enemy-side">
+        <section class="side-panel enemy-side ${enemyInteractive ? "is-active-build" : "is-inactive-build"}">
           ${skillPool(state.enemySkills, state.enemyTeam, enemyTitle, enemyInteractive)}
           ${teamPanel(state.enemyTeam, state.enemySkills, hotseat ? "玩家 B 伙伴" : "对方伙伴", enemyInteractive)}
         </section>
@@ -140,7 +140,7 @@ function skillPool(skills, team, title, interactive) {
   const basicSkills = displaySkillOrder(skills.filter((skill) => skill.tier === "basic"));
   const sideClass = interactive ? "player" : "enemy";
   const teamHighCount = skills.filter((skill) => skill.tier === "high" && skill.assignedPetId).length;
-  const highCountText = state.battleMode === "competitive" ? `高级技能 ${teamHighCount}/${COMPETITIVE_SKILL_LIMITS.teamHigh}` : "6/6";
+  const highCountText = state.battleMode === "competitive" ? `${teamHighCount}/${COMPETITIVE_SKILL_LIMITS.teamHigh}` : "6/6";
 
   return `
     <section class="prep-card skill-pool ${sideClass}-pool">
@@ -166,17 +166,20 @@ function skillButton(skill, team, interactive) {
   const assignedPet = interactive ? team.find((pet) => pet.id === skill.assignedPetId) : null;
   const selected = interactive && state.selectedSkillId === skill.id;
   const disabled = Boolean(assignedPet);
+  const stateClass = assignedPet ? "is-equipped" : interactive ? "is-available" : "is-unavailable";
 
   return `
     <button
-      class="prep-skill ${skill.tier} ${selected ? "selected" : ""} ${interactive ? "" : "is-readonly"}"
+      class="prep-skill ${skill.tier} ${stateClass} ${selected ? "selected" : ""} ${interactive ? "" : "is-readonly"}"
       ${interactive && !disabled ? `data-skill="${skill.id}" draggable="true"` : ""}
       data-tooltip="${skillTooltipText(skill)}"
       ${disabled || !interactive ? "disabled" : ""}
       type="button"
     >
       <span class="skill-gem">${skillIconText(skill)}</span>
+      ${assignedPet ? `<span class="skill-state-mark" aria-hidden="true">✓</span>` : ""}
       <span class="skill-name">${skill.name}</span>
+      ${assignedPet ? `<span class="skill-state-text">已装备</span>` : ""}
     </button>
   `;
 }

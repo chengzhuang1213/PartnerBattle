@@ -33,15 +33,15 @@ const POOLS = {
 };
 
 const PLAYER1_AVATARS = [
-  { id: "gold-knight", name: "蔷薇骑士", src: "assets/chibi-avatars/gold-knight.png", battleSrc: "assets/battle-chibi/gold-knight.png", attackSrc: "assets/battle-attack/gold-knight.png" },
-  { id: "silver-mage", name: "冰霜法师", src: "assets/chibi-avatars/silver-mage.png", battleSrc: "assets/battle-chibi/silver-mage.png", attackSrc: "assets/battle-attack/silver-mage.png" },
-  { id: "flame-warrior", name: "火焰剑士", src: "assets/chibi-avatars/flame-warrior.png", battleSrc: "assets/battle-chibi/flame-warrior.png", attackSrc: "assets/battle-attack/flame-warrior.png" },
+  { id: "gold-knight", name: "艾琳", src: "assets/chibi-avatars/gold-knight.png", battleSrc: "assets/battle-chibi/gold-knight.png", attackSrc: "assets/battle-attack/gold-knight.png" },
+  { id: "silver-mage", name: "维恩", src: "assets/chibi-avatars/silver-mage.png", battleSrc: "assets/battle-chibi/silver-mage.png", attackSrc: "assets/battle-attack/silver-mage.png" },
+  { id: "flame-warrior", name: "凯恩", src: "assets/chibi-avatars/flame-warrior.png", battleSrc: "assets/battle-chibi/flame-warrior.png", attackSrc: "assets/battle-attack/flame-warrior.png" },
 ];
 
 const PLAYER2_AVATARS = [
-  { id: "pink-fox-mage", name: "九尾妖狐", src: "assets/chibi-avatars/pink-fox-mage.png", battleSrc: "assets/battle-chibi/pink-fox-mage.png", attackSrc: "assets/battle-attack/pink-fox-mage.png" },
-  { id: "brown-rogue", name: "双刀刺客", src: "assets/chibi-avatars/brown-rogue.png", battleSrc: "assets/battle-chibi/brown-rogue.png", attackSrc: "assets/battle-attack/brown-rogue.png" },
-  { id: "blue-ninja", name: "神秘忍者", src: "assets/chibi-avatars/blue-ninja.png", battleSrc: "assets/battle-chibi/blue-ninja.png", attackSrc: "assets/battle-attack/blue-ninja.png" },
+  { id: "pink-fox-mage", name: "桃璃", src: "assets/chibi-avatars/pink-fox-mage.png", battleSrc: "assets/battle-chibi/pink-fox-mage.png", attackSrc: "assets/battle-attack/pink-fox-mage.png" },
+  { id: "brown-rogue", name: "诺克", src: "assets/chibi-avatars/brown-rogue.png", battleSrc: "assets/battle-chibi/brown-rogue.png", attackSrc: "assets/battle-attack/brown-rogue.png" },
+  { id: "blue-ninja", name: "凛", src: "assets/chibi-avatars/blue-ninja.png", battleSrc: "assets/battle-chibi/blue-ninja.png", attackSrc: "assets/battle-attack/blue-ninja.png" },
 ];
 
 const ROSTER_AVATARS = [...PLAYER1_AVATARS, ...PLAYER2_AVATARS];

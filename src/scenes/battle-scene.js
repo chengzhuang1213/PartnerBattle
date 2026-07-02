@@ -42,13 +42,10 @@ function renderBattlePrepPage() {
         ${teamDock(null, usedPlayerIds, usedEnemyIds, pickSide, true)}
         <section class="battle-prep-panel">
           <div class="battle-prep-detail ${pendingPlayer ? "has-pending" : ""}">
-            ${inspectedPlayer ? battlePrepCard(inspectedPlayer, state.playerSkills, hotseat && pickSide === "enemy", inspectedPlayerHp) : `<div class="battle-prep-empty">${hotseat && pickSide === "enemy" ? "玩家 A 胜者守擂中" : "选择 1 位我方伙伴上场"}</div>`}
+            ${inspectedPlayer ? battlePrepCard(inspectedPlayer, state.playerSkills, hotseat && pickSide === "enemy", inspectedPlayerHp) : battlePrepChoicePanel("player", usedPlayerIds, pickSide === "player", hotseat && pickSide === "enemy")}
           </div>
           <div class="battle-prep-opponent ${inspectedEnemy ? "has-inspect" : ""}">
-            ${inspectedEnemy ? battlePrepCard(inspectedEnemy, state.enemySkills, !hotseat || pickSide === "player", inspectedEnemyHp) : `
-              <strong>${hotseat ? "玩家 B 待命" : "对方随机待命"}</strong>
-              <span>${hotseat && pickSide === "enemy" ? "请选择玩家 B 的上场伙伴" : "点击对方卡片查看属性，技能保持隐藏"}</span>
-            `}
+            ${inspectedEnemy ? battlePrepCard(inspectedEnemy, state.enemySkills, !hotseat || pickSide === "player", inspectedEnemyHp) : battlePrepLockedPanel(hotseat, pickSide)}
           </div>
         </section>
         <div class="battle-prep-confirm">
@@ -59,6 +56,29 @@ function renderBattlePrepPage() {
         ${privacyGateOverlay()}
       </main>
     </section>
+  `;
+}
+
+function battlePrepChoicePanel(side, usedIds, canPick, hideSkills = false) {
+  const title = side === "player" ? "选择 1 位我方伙伴上场" : "选择 1 位对方伙伴上场";
+  const hint = canPick ? "从上方候选卡选择本局出场伙伴" : "等待另一位玩家完成选择";
+  return `
+    <div class="battle-prep-choice-panel ${side}">
+      <h2>${title}</h2>
+      <p>${hint}</p>
+    </div>
+  `;
+}
+
+function battlePrepLockedPanel(hotseat, pickSide) {
+  const title = hotseat ? "玩家 B 待命" : "对方随机待命";
+  const hint = hotseat && pickSide === "enemy" ? "请选择玩家 B 的上场伙伴" : "对方技能与出场选择保持隐藏";
+  return `
+    <div class="battle-prep-lock-panel">
+      <span class="lock-mark">?</span>
+      <strong>${title}</strong>
+      <p>${hint}</p>
+    </div>
   `;
 }
 
@@ -119,11 +139,11 @@ function renderBattleReplayPage() {
           ${healBubble("enemy", frame)}
         </section>
         <div class="combat-prompt ${replayDone && result.winner ? "ended" : ""}">${battlePromptText(result, frame, replayDone)}</div>
-        ${replayDone && result.winner ? matchReviewPanel(result) : ""}
+        ${replayDone && result.winner ? finalResultPanel(result) : ""}
         <div class="battle-control-bar">
           <button class="secondary-action soft-action" data-confirm-home type="button">返回主菜单</button>
           <button class="secondary-action soft-action" data-toggle-log>战斗分析</button>
-          <button class="primary-action continue-button" data-continue-battle>${result.winner && replayDone ? "重新开始" : replayDone ? "下一步" : "跳到结果"}</button>
+          <button class="primary-action continue-button" data-continue-battle>${result.winner && replayDone ? "再来一局" : replayDone ? "下一步" : "跳到结果"}</button>
         </div>
         ${state.showBattleLog ? battleLogOverlay(visibleEvents) : ""}
         ${state.confirmHome ? homeConfirmModal() : ""}
@@ -166,9 +186,10 @@ function combatHeader(playerWins, enemyWins, matchIndex) {
 
 function battlePromptText(result, frame, replayDone) {
   if (!replayDone || !result.winner) return frame.text;
+  const title = battleResultTitle(result);
   if (isPracticeMode()) return result.winner === "player" ? "练习 BO1 胜利！" : "练习 BO1 结束：对方胜利";
-  if (isKofMode()) return result.winner === "player" ? "KOF3 擂台胜利！对方 3 名伙伴全部失败" : "KOF3 擂台结束：我方 3 名伙伴全部失败";
-  return result.winner === "player" ? "BO3 战斗胜利！对方失败，本局已结束" : "BO3 战斗结束：我方失败，本局已结束";
+  if (isKofMode()) return `${title}！${sideName(result.winner)}赢下 KOF3 擂台。`;
+  return `${title}！${sideName(result.winner)}赢下 BO3。`;
 }
 
 function battleCenterText(frame) {
@@ -199,10 +220,12 @@ function combatLogPanel(events, matchIndexes = [], activeMatchIndex = 0) {
         <h2>战斗分析</h2>
         ${battleLogTabs(matchIndexes, activeMatchIndex)}
       </div>
-      ${battleSummaryPanel(events)}
-      <ol class="combat-log">
-        ${events.map(renderBattleLogEntry).join("")}
-      </ol>
+      <div class="combat-log-scroll">
+        ${battleSummaryPanel(events)}
+        <ol class="combat-log">
+          ${events.map(renderBattleLogEntry).join("")}
+        </ol>
+      </div>
     </section>
   `;
 }
@@ -412,6 +435,111 @@ function matchReviewPanel(result) {
       </div>
     </section>
   `;
+}
+
+function finalResultPanel(result) {
+  if (!result.matches.length) return "";
+  const won = result.winner === "player";
+  const winnerText = sideName(result.winner);
+  const resultTitle = battleResultTitle(result);
+  const scoreText = isPracticeMode()
+    ? "BO1"
+    : isKofMode()
+      ? `${result.playerWins} - ${result.enemyWins}`
+      : `${result.playerWins} - ${result.enemyWins}`;
+  const mvp = battleMvp(result);
+  const topDamage = battleTopDamage(result.events);
+  const keySkills = battleKeySkills(result.events);
+
+  return `
+    <section class="final-result-panel ${won ? "victory" : "defeat"}">
+      <div class="final-result-hero">
+        <span>${resultTitle}</span>
+        <h2>${winnerText}赢下本场</h2>
+        <p>${isKofMode() ? "KOF3 最终比分" : isPracticeMode() ? "练习模式结束" : "BO3 最终比分"} · ${scoreText}</p>
+      </div>
+      <div class="final-result-highlights">
+        <article>
+          <small>MVP</small>
+          <strong>${mvp ? mvp.name : "暂无"}</strong>
+          <span>${mvp ? `${sideName(mvp.side)} · ${mvp.wins} 胜` : "没有完成对局"}</span>
+        </article>
+        <article>
+          <small>最高伤害</small>
+          <strong>${topDamage ? `${topDamage.damage}` : "0"}</strong>
+          <span>${topDamage ? `${sideName(topDamage.actorSide)}单次打出` : "暂无攻击事件"}</span>
+        </article>
+        <article>
+          <small>关键技能</small>
+          <strong>${keySkills.length ? keySkills[0].name : "普通攻击"}</strong>
+          <span>${keySkills.length ? keySkills.map((skill) => `${skill.name} x${skill.count}`).join(" / ") : "本场主要由属性与普攻决定"}</span>
+        </article>
+      </div>
+      ${matchReviewPanel(result)}
+    </section>
+  `;
+}
+
+function battleResultTitle(result) {
+  if (isPracticeMode()) return result.winner === "player" ? "练习胜利" : "练习落败";
+  if (isKofMode()) return kofResultTitle(result);
+
+  const playerWins = result.playerWins || 0;
+  const enemyWins = result.enemyWins || 0;
+  if (playerWins === 2 && enemyWins === 0) return "完胜";
+  if (playerWins === 2 && enemyWins === 1) return "险胜";
+  if (playerWins === 1 && enemyWins === 2) return "惜败";
+  if (playerWins === 0 && enemyWins === 2) return "完败";
+  return result.winner === "player" ? "胜利" : "落败";
+}
+
+function kofResultTitle(result) {
+  const winnerWins = result.winner === "player" ? result.playerWins : result.enemyWins;
+  const loserWins = result.winner === "player" ? result.enemyWins : result.playerWins;
+  const mvp = battleMvp(result);
+
+  if (winnerWins === 3 && loserWins === 0 && mvp?.side === result.winner && mvp.wins === 3) return "一穿三";
+  if (winnerWins === 3 && loserWins === 2 && kofWasDownZeroTwo(result)) return result.winner === "player" ? "让二追三" : "被让二追三";
+  if (winnerWins === 3 && loserWins === 0) return result.winner === "player" ? "完封" : "被完封";
+  if (winnerWins === 3 && loserWins === 2) return result.winner === "player" ? "极限险胜" : "极限惜败";
+  if (result.winner === "player") return "擂台胜利";
+  return "擂台落败";
+}
+
+function kofWasDownZeroTwo(result) {
+  if (!isKofMode() || result.matches.length < 5) return false;
+  const firstTwo = result.matches.slice(0, 2);
+  return firstTwo.every((match) => match.winner !== result.winner);
+}
+
+function battleMvp(result) {
+  const records = new Map();
+  for (const match of result.matches) {
+    const winnerPet = match.winner === "player" ? match.player : match.enemy;
+    const key = `${match.winner}:${winnerPet.id}`;
+    const current = records.get(key) || { side: match.winner, name: winnerPet.name, wins: 0, hpLeft: 0 };
+    current.wins += 1;
+    current.hpLeft += match.winner === "player" ? match.playerHp : match.enemyHp;
+    records.set(key, current);
+  }
+
+  return [...records.values()].sort((a, b) => b.wins - a.wins || b.hpLeft - a.hpLeft)[0] || null;
+}
+
+function battleTopDamage(events) {
+  return events.filter((event) => event.type === "attack").sort((a, b) => b.damage - a.damage)[0] || null;
+}
+
+function battleKeySkills(events) {
+  const counts = new Map();
+  for (const event of events) {
+    if (event.type !== "skill" || !event.skillName || event.skillName.startsWith("-")) continue;
+    counts.set(event.skillName, (counts.get(event.skillName) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 }
 
 function startBattleReplay() {

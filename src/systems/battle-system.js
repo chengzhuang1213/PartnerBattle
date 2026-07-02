@@ -10,7 +10,9 @@ function resolveBattle() {
   }
 
   state.battlePickMode = true;
-  state.enemyOrder = [];
+  state.enemyOrder = state.battleMode === "competitive" && state.mode !== "hotseat"
+    ? competitiveAiBattleOrder(state.enemyTeam, state.enemySkills)
+    : [];
   state.selectedId = null;
   state.pendingPlayerId = null;
   state.pendingEnemyId = null;
@@ -81,7 +83,7 @@ function startSelectedBattleMatch() {
   const enemies = availableEnemyTeam();
   const enemy = state.mode === "hotseat"
     ? enemies.find((pet) => pet.id === state.pendingEnemyId)
-    : enemies.length ? pick(enemies) : null;
+    : chooseAiBattlePet(enemies, player);
   if (!player || !enemy) return;
 
   const startIndex = state.result.events.length;
@@ -124,7 +126,7 @@ function startSelectedKofMatch() {
   const enemies = availableEnemyTeam();
   const enemy = currentEnemy || (state.mode === "hotseat"
     ? enemies.find((pet) => pet.id === state.pendingEnemyId)
-    : enemies.length ? pick(enemies) : null);
+    : chooseAiBattlePet(enemies, player));
   if (!player || !enemy) return;
 
   const startIndex = state.result.events.length;
@@ -185,6 +187,36 @@ function isKofMode() {
 
 function isPracticeMode() {
   return state.battleMode === "practice";
+}
+
+function chooseAiBattlePet(enemies, player) {
+  if (!enemies.length) return null;
+  if (state.battleMode !== "competitive") return pick(enemies);
+
+  return [...enemies]
+    .map((enemy) => ({ enemy, score: competitiveAiPickScore(enemy, player) }))
+    .sort((a, b) => b.score - a.score)[0]?.enemy || enemies[0];
+}
+
+function competitiveAiPickScore(enemy, player) {
+  const order = state.enemyOrder?.length ? state.enemyOrder : competitiveAiBattleOrder(state.enemyTeam, state.enemySkills);
+  const orderIndex = order.indexOf(enemy.id);
+  const plannedOrderScore = orderIndex >= 0 ? (order.length - orderIndex) * 4 : 0;
+  const role = enemy.aiRole || "support";
+  const playerSkills = getPetSkills(player, state.playerSkills);
+  const enemySkills = getPetSkills(enemy, state.enemySkills);
+  const playerAttack = playerSkills.filter((skill) => ["crit", "combo", "power", "sneak", "lifesteal"].includes(skill.group)).length;
+  const playerReactive = playerSkills.filter((skill) => COMPETITIVE_AI_REACTIVE_GROUPS.includes(skill.group)).length;
+  const enemyPoke = enemySkills.filter((skill) => ["poison", "sneak", "agile"].includes(skill.group)).length;
+  const enemyReactive = enemySkills.filter((skill) => COMPETITIVE_AI_REACTIVE_GROUPS.includes(skill.group)).length;
+  const enemyAttack = enemySkills.filter((skill) => ["crit", "combo", "power", "sneak", "lifesteal", "unyielding"].includes(skill.group)).length;
+  const matchIndex = state.result?.matches.length || 0;
+  const scoutOpenerBonus = matchIndex === 0 && role === "scout" ? 14 : 0;
+  const responseBonus = playerAttack >= 2 ? enemyReactive * 5 : 0;
+  const antiTurtleBonus = playerReactive >= 2 ? enemyPoke * 5 + (role === "support" ? 4 : 0) : 0;
+  const closeBonus = (state.result?.enemyWins || 0) === 1 ? enemyAttack * 3 + (role === "carry" ? 5 : 0) : 0;
+
+  return plannedOrderScore + scoutOpenerBonus + responseBonus + antiTurtleBonus + closeBonus;
 }
 
 function currentKofPet(side) {

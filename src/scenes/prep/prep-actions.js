@@ -101,8 +101,30 @@ function removeSkill(skillId) {
   renderGame();
 }
 
+const COMPETITIVE_AI_ROLES = ["carry", "support", "scout"];
+const COMPETITIVE_AI_REACTIVE_GROUPS = ["counter", "reflect", "parry", "flight", "lucky"];
+const COMPETITIVE_AI_ROLE_WEIGHTS = {
+  carry: {
+    high: { power: 11, combo: 10, crit: 9, lifesteal: 8, sneak: 7, agile: 5, unyielding: 4 },
+    basic: { combo: 9, crit: 8, power: 7, sneak: 6, lifesteal: 5, agile: 4, unyielding: 3 },
+  },
+  support: {
+    high: { poison: 10, regen: 9, revive: 8, defense: 7, lifesteal: 5, lucky: 4, flight: 4 },
+    basic: { poison: 9, regen: 8, defense: 7, revive: 6, lifesteal: 4, lucky: 3, flight: 3 },
+  },
+  scout: {
+    high: { agile: 10, sneak: 9, flight: 8, parry: 7, poison: 6, lucky: 5, crit: 4 },
+    basic: { agile: 9, sneak: 8, flight: 7, parry: 6, poison: 5, lucky: 4, crit: 3 },
+  },
+};
+
 function autoAssignEnemySkills(team, skills) {
-  const limits = state.battleMode === "competitive" ? COMPETITIVE_SKILL_LIMITS : null;
+  if (state.battleMode === "competitive") {
+    autoAssignCompetitiveAiSkills(team, skills);
+    return;
+  }
+
+  const limits = null;
   for (const skill of shuffle(skills)) {
     const candidates = shuffle(team).filter((pet) => canAssignSkill(pet, skill, skills, limits));
     const pet = candidates[0];
@@ -111,6 +133,85 @@ function autoAssignEnemySkills(team, skills) {
     skill.assignedPetId = pet.id;
     pet.skills.push(skill.id);
   }
+}
+
+function autoAssignCompetitiveAiSkills(team, skills) {
+  assignCompetitiveAiRoles(team);
+  for (const pet of team) pet.skills = [];
+  for (const skill of skills) skill.assignedPetId = null;
+
+  const sortedSkills = [...skills].sort((a, b) => {
+    if (a.tier !== b.tier) return a.tier === "high" ? -1 : 1;
+    return bestCompetitiveSkillValue(b) - bestCompetitiveSkillValue(a);
+  });
+
+  for (const skill of sortedSkills) {
+    const pet = bestCompetitiveSkillTarget(team, skills, skill);
+    if (!pet) continue;
+    skill.assignedPetId = pet.id;
+    pet.skills.push(skill.id);
+  }
+
+  state.enemyOrder = competitiveAiBattleOrder(team, skills);
+}
+
+function assignCompetitiveAiRoles(team) {
+  const roles = shuffle(COMPETITIVE_AI_ROLES);
+  for (let index = 0; index < team.length; index += 1) {
+    team[index].aiRole = roles[index] || COMPETITIVE_AI_ROLES[index % COMPETITIVE_AI_ROLES.length];
+  }
+}
+
+function bestCompetitiveSkillValue(skill) {
+  return Math.max(...COMPETITIVE_AI_ROLES.map((role) => competitiveSkillRoleValue(role, skill)));
+}
+
+function bestCompetitiveSkillTarget(team, skills, skill) {
+  const candidates = shuffle(team).filter((pet) => canAssignSkill(pet, skill, skills, COMPETITIVE_SKILL_LIMITS));
+  const viable = COMPETITIVE_AI_REACTIVE_GROUPS.includes(skill.group)
+    ? candidates.filter((pet) => competitiveReactiveSkillCount(pet, skills) < 1)
+    : candidates;
+
+  return viable
+    .map((pet) => ({ pet, score: competitiveSkillTargetScore(pet, skills, skill) }))
+    .sort((a, b) => b.score - a.score)[0]?.pet || null;
+}
+
+function competitiveSkillTargetScore(pet, skills, skill) {
+  const assigned = getPetSkills(pet, skills);
+  const role = pet.aiRole || "support";
+  const roleScore = competitiveSkillRoleValue(role, skill);
+  const reactiveCount = assigned.filter((item) => COMPETITIVE_AI_REACTIVE_GROUPS.includes(item.group)).length;
+  const hasReactive = COMPETITIVE_AI_REACTIVE_GROUPS.includes(skill.group);
+  const sameTierCount = assigned.filter((item) => item.tier === skill.tier).length;
+  const slotBalance = skill.tier === "high" ? (role === "carry" ? 2 : 1) - sameTierCount : 3 - sameTierCount;
+  const antiStackPenalty = hasReactive ? reactiveCount * 8 + (role === "carry" ? 4 : 0) : 0;
+  const emptyRoleBonus = assigned.length ? 0 : role === "scout" && skill.tier === "basic" ? 2 : 4;
+
+  return roleScore * 10 + slotBalance * 3 + emptyRoleBonus - antiStackPenalty;
+}
+
+function competitiveSkillRoleValue(role, skill) {
+  return COMPETITIVE_AI_ROLE_WEIGHTS[role]?.[skill.tier]?.[skill.group] || (skill.tier === "high" ? 2 : 1);
+}
+
+function competitiveAiBattleOrder(team, skills) {
+  const roleOrder = ["scout", "support", "carry"];
+  return [...team]
+    .sort((a, b) => {
+      const roleDelta = roleOrder.indexOf(a.aiRole) - roleOrder.indexOf(b.aiRole);
+      if (roleDelta) return roleDelta;
+      return competitivePetPlanScore(b, skills) - competitivePetPlanScore(a, skills);
+    })
+    .map((pet) => pet.id);
+}
+
+function competitivePetPlanScore(pet, skills) {
+  return getPetSkills(pet, skills).reduce((total, skill) => total + competitiveSkillRoleValue(pet.aiRole, skill), 0);
+}
+
+function competitiveReactiveSkillCount(pet, skills) {
+  return getPetSkills(pet, skills).filter((skill) => COMPETITIVE_AI_REACTIVE_GROUPS.includes(skill.group)).length;
 }
 
 function randomAssignPlayerSkills() {
