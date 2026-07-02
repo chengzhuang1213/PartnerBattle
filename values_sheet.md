@@ -1,5 +1,24 @@
 # values_sheet
 
+## 练习模式
+
+位置：`src/scenes/start-scene.js`、`src/scenes/practice-scene.js`、`src/game.js`、`src/flow/game-flow.js`、`src/input/events.js`、`src/systems/battle-system.js`、`src/scenes/battle-scene.js`
+
+| 项 | 当前规则 / 显示 |
+| --- | --- |
+| 首页入口 | 原“双人联机”入口临时改为“练习模式”。 |
+| Build | 进入后显示专用 Build 界面，不走普通 prep / 出场选择流程。 |
+| 角色数量 | 双方各 1 个角色。 |
+| 基础数值 | 使用竞技模式基础数值：HP 90 / ATK 20 / DEF 10 / SPD 10。 |
+| 数值调整 | 玩家可分别调整双方角色的 HP / ATK / DEF / SPD，范围 1-999。 |
+| 技能池 | 双方共用一套技能池，包含全部 16 组技能的初级 + 高级版本；按攻击类 / 防御类 / 功能类分区，每区高级技能排在前面。 |
+| 技能分类 | 攻击类：必杀、连击、不屈、强力、偷袭、吸血；防御类：防御、反击、反震、招架；其余技能为功能类。 |
+| 装备格 | 每个角色显示 2 个高级格 + 3 个初级格；先选技能池里的技能，再点对应空格装备。 |
+| 装备限制 | 每个角色最多 2 高级 + 3 初级；保留同组互斥：同一角色不能同时携带同组初级和高级技能，例如“连击 + 高级连击”。 |
+| 拖拽 | 技能可拖到角色卡任意区域自动装备；拖到已占用格子会尝试替换原技能，原技能卸下。 |
+| 比赛流程 | 点击“开始 BO1”后直接进入战斗界面，BO1 结束后回到练习 Build。 |
+| 战斗显示 | 练习模式战斗顶部显示 BO1，不显示 BO3 / prep 出场选择。 |
+
 用于以后更新数值和基础系统时快速定位。当前主要逻辑已经按目录拆到 `src/` 和 `styles/`，本表按“系统 -> 位置 -> 当前值/规则 -> 修改提示”整理。
 
 ## 技能总览
@@ -17,7 +36,7 @@
 | `lifesteal` | 吸血 | 造成伤害的15%转化为生命 | 高级吸血 | 造成伤害的30%转化为生命 |
 | `revive` | 神佑复生 | 死亡时20%概率复活，每场最多一次 | 高级神佑复生 | 死亡时35%概率复活，每场最多一次 |
 | `lucky` | 幸运 | 受到暴击时，暴击伤害降低40% | 高级幸运 | 受到暴击时，暴击伤害降低60% |
-| `parry` | 招架 | 本场第一次受到攻击完全免疫 | 高级招架 | 本场前两次受到攻击完全免疫 |
+| `parry` | 招架 | 本场第一次受到攻击伤害降低75% | 高级招架 | 本场前两次受到攻击伤害降低65% |
 | `defense` | 防御 | 防御提高30%，攻击力降低10% | 高级防御 | 防御提高50%，攻击力降低10% |
 | `regen` | 再生 | 每回合恢复最大生命3% | 高级再生 | 每回合恢复最大生命7% |
 | `reflect` | 反震 | 受到攻击时，有35%概率反弹本次伤害的35%。反震为真实伤害，不触发吸血、反震、反击。 | 高级反震 | 受到攻击时，有35%概率反弹本次伤害的65%。反震为真实伤害，不触发吸血、反震、反击。 |
@@ -25,7 +44,7 @@
 | `agile` | 敏捷 | 速度提高20% | 高级敏捷 | 速度提高40% |
 | `unyielding` | 不屈 | 生命低于50%时，造成伤害提高20% | 高级不屈 | 生命低于50%时，造成伤害提高40% |
 | `poison` | 毒 | 攻击时有25%概率使目标中毒2回合 | 高级毒 | 攻击时有45%概率使目标中毒2回合，免疫中毒 |
-| `flight` | 飞行 | 受到攻击时5%概率免疫本次攻击 | 高级飞行 | 受到攻击时15%概率免疫本次攻击；若本次攻击来自连击追加攻击，免疫率改为50% |
+| `flight` | 闪躲 | 受到攻击时5%概率免疫本次攻击 | 高级闪躲 | 受到攻击时15%概率免疫本次攻击；若本次攻击来自连击追加攻击，免疫率改为50% |
 
 ### 技能触发细节
 
@@ -41,11 +60,11 @@
 | 反击 | 防守方未死且通过 20% / 35% 概率后，立刻普通攻击一次；会受防御影响，可触发暴击、吸血、神佑等普通攻击效果，但不会再次触发反击或连击。 |
 | 连击 | 攻击方未死且防守方未死，通过 45% / 55% 概率后追加一次普通攻击；追加攻击不会触发连击，也不会触发对方反震。 |
 | 神佑复生 | 死亡时 20%/35% 概率复活，每场最多一次，恢复最大生命 35%，至少 1。 |
-| 招架 | 若还有招架次数，直接免疫本次攻击并消耗 1 次，不造成伤害，不触发吸血、毒、毒污染、反震、反击；攻击方的连击判定仍可执行。 |
+| 招架 | 若还有招架次数，受到攻击时消耗 1 次；初级本次伤害降低 75%，高级本次伤害降低 65%。减伤后仍会造成至少 1 点伤害，并正常触发吸血、毒、毒污染、反震、反击、连击等攻击后续效果。 |
 | 毒 | 攻击时 25% / 45% 概率使目标中毒 2 回合；高级毒额外免疫中毒。 |
 | 中毒 | 每回合结束损失当前生命 10%，持续 2 回合，至少 1 点；不可叠加，再次中毒只刷新持续回合；中毒伤害不触发吸血、反震、反击、神佑、暴击。 |
 | 毒污染 | 拥有吸血或高级吸血的单位攻击中毒目标后，100% 感染中毒。 |
-| 飞行 | 受到每段攻击时单独判定；初级 5% 免疫本次攻击，高级普通段 15%，高级面对连击追加段 50%。免疫后不造成伤害，不触发吸血、毒、反震、反击；若是普通攻击段，攻击方的连击判定仍可执行。 |
+| 闪躲 | 受到每段攻击时单独判定；初级 5% 免疫本次攻击，高级普通段 15%，高级面对连击追加段 50%。免疫后不造成伤害，不触发吸血、毒、反震、反击；若是普通攻击段，攻击方的连击判定仍可执行。 |
 
 ## 入口文件
 
@@ -56,16 +75,22 @@
 | `src/systems/battle-system.js` | BO3 流程、上场选择、单局模拟、攻击公式、战斗日志事件。 |
 | `src/shared/shared-render.js` | 多个场景共用的头像、立绘、属性行、标签渲染。 |
 | `src/scenes/start-scene.js` | 开始菜单 scene。 |
-| `src/scenes/prep-scene.js` | 准备阶段 scene，包括队伍卡、技能分配面板。 |
+| `src/flow/game-flow.js` | 游戏流程，包括开始游戏、模式选择、选人、回主页、隐私遮屏、继续战斗。 |
+| `src/input/events.js` | 全局点击、拖拽、触摸、tooltip 事件绑定。 |
+| `src/scenes/prep/prep-actions.js` | 准备阶段操作，包括选择技能、装备/卸下、随机分配、重随属性。 |
+| `src/scenes/prep/prep-rules.js` | 准备阶段规则弹窗、装备规则说明。 |
+| `src/scenes/prep/prep-tooltips.js` | 准备阶段 tooltip、技能图标说明、技能克制提示。 |
+| `src/scenes/prep-scene.js` | 准备阶段 scene 渲染，包括队伍卡、技能分配面板、确认弹窗容器。 |
 | `src/scenes/battle-scene.js` | 战斗 scene，包括战斗页、回放、血条、日志、候补席。 |
-| `src/game.js` | 游戏状态、启动新局、停止回放、全局点击事件分发。 |
+| `src/game.js` | 全局 app/state、初始状态创建、停止回放。 |
 | `styles/base.css` | 全局主题、通用按钮、通用标签、通用头像/属性/tooltip 样式。 |
 | `styles/start-scene.css` | 开始菜单 scene 样式。 |
 | `styles/prep-scene.css` | 准备阶段 scene 样式。 |
 | `styles/battle-scene.css` | 战斗 scene 样式。 |
-| `index.html` / `play.html` | 页面入口，按顺序加载拆分后的 CSS 和 JS 文件。两者当前内容相同。 |
-| `server.js` | 本地静态文件服务器，默认端口 `5178`。 |
-| `start-game.bat` | Windows 一键启动脚本，运行 `node server.js`。 |
+| `index.html` / `play.html` | 页面入口，按顺序加载拆分后的 CSS 和 JS 文件。两者当前内容相同；新增 JS 文件时必须同步两处引用顺序。 |
+| `server.js` | 发布/静态文件服务器，优先托管 `dist`，默认端口 `3000`。 |
+| `tools/local-server.js` | 本地开发静态文件服务器，默认监听 `127.0.0.1:5178`。 |
+| `start-game.bat` | Windows 一键启动脚本，运行 `node tools/local-server.js`。 |
 
 ## 角色池与基础属性
 
@@ -120,6 +145,7 @@
 - `src` 用于准备/卡片头像。
 - `battleSrc` 用于战斗场景立绘。
 - 开局会从对应阵营头像中随机抽 3 个，配给橙/紫/蓝三个池子。
+- 竞技模式仍复用 `POOL_KEYS` 作为 3 个队伍槽位的内部顺序，但 UI 不显示橙/紫/蓝池子标识；角色名、构筑卡和战斗选人卡使用 `avatarId` 对应的角色主题色。
 
 ## 技能发放与装备限制
 
@@ -140,6 +166,20 @@
 | 橙色池 | 最多 2 高级 + 3 初级 |
 | 紫色池 | 最多 1 高级 + 2 初级 |
 | 蓝色池 | 3 初级，或 1 高级 + 1 初级 |
+
+### 竞技模式装备规则
+
+位置：`src/systems/ability.js` -> `COMPETITIVE_SKILL_LIMITS`，`src/scenes/prep/prep-actions.js` -> `skillAssignBlockedReason(...)`，`src/scenes/prep-scene.js` -> `skillPool(...)` / `partnerCard(...)`，`src/scenes/prep/prep-rules.js` / `src/scenes/prep/prep-tooltips.js`
+
+| 项 | 当前规则 / 显示 |
+| --- | --- |
+| 赛制 | 3v3 BO3，先赢 2 局获胜。 |
+| 单角色上限 | 最多 2 个高级技能 + 3 个初级技能。 |
+| 全队高级上限 | 最多 4 个高级技能，构筑页显示为“高级技能 x/4”。 |
+| 同组限制 | 同一角色不能同时携带同组初级和高级技能，例如“连击 + 高级连击”。 |
+| 构筑页显示 | 每个角色显示“高级 x/2”“初级 x/3”。 |
+| tooltip / 规则说明 | 都需要同步说明“每人 2 高 + 3 初、全队 4 高、同组不可重复”。 |
+| 品质显示 | 竞技模式不显示橙/紫/蓝池子角标和池子规则文案；角色颜色来自 `avatarId` 主题。 |
 
 通用限制：
 
@@ -175,7 +215,7 @@
 | 防御 | def * 1.30，atk * 0.90 | def * 1.50，atk * 0.90 | 入场时计算 |
 | 敏捷 | spd * 1.20 | spd * 1.40 | 入场时计算 |
 | 连击 | atk * 0.75 | atk * 0.85 | 入场时计算 |
-| 招架 | 1 次免疫 | 2 次免疫 | 入场时记录次数 |
+| 招架 | 1 次，受到攻击伤害 -75% | 2 次，受到攻击伤害 -65% | 入场时记录次数 |
 
 所有修正后的 `atk`、`def`、`spd` 都会四舍五入。
 
@@ -241,6 +281,17 @@
 | 其他文字事件 | 560ms |
 | 单局结束后进入下一次选人 | 900ms |
 
+### 战斗分析与复盘
+
+位置：`src/scenes/battle-scene.js` -> `battleSummaryPanel(...)`、`battleSummaryItems(...)`、`matchReviewPanel(...)`、`teamMiniCard(...)`
+
+| 模块 | 当前显示 |
+| --- | --- |
+| 战斗分析摘要 | 战斗分析弹窗顶部显示关键技能、最高单次伤害、暴击/连击/毒/复活/防反等主要影响、单局胜者。 |
+| 完整日志 | 摘要下方保留逐条事件日志和伤害公式展开。 |
+| 结束复盘 | 战斗结束页显示每局对阵和胜负。 |
+| 出场标记 | 候补席卡片左上角显示 1/2/3 标记，已出场按实际局数显示，未出场按队伍顺序显示。 |
+
 ## 样式与布局数值
 
 位置：`styles/base.css`、`styles/start-scene.css`、`styles/prep-scene.css`、`styles/battle-scene.css`
@@ -269,11 +320,12 @@
 
 ## 本地运行
 
-位置：`server.js`、`start-game.bat`
+位置：`server.js`、`tools/local-server.js`、`start-game.bat`
 
 | 项 | 当前值 |
 | --- | --- |
-| 默认端口 | `5178` |
+| 开发默认端口 | `5178`（`tools/local-server.js` / `start-game.bat`） |
+| 发布默认端口 | `3000`（`server.js`） |
 | 监听地址 | `127.0.0.1` |
 | 环境变量覆盖 | `PORT` |
 | 根路径 | `/` -> `index.html` |
@@ -281,7 +333,7 @@
 运行：
 
 ```powershell
-node server.js
+node tools/local-server.js
 ```
 
 或双击：
@@ -294,10 +346,11 @@ start-game.bat
 
 1. 改角色强度：检查 `src/data/game-data.js` 里的 `POOLS`、`STAT_WEIGHTS`、`rollStats`。
 2. 改技能效果：同时检查 `src/systems/ability.js` 里的 `SKILL_GROUPS` 描述和对应实现函数。
-3. 改技能数量：检查 `src/systems/ability.js` 里的 `createSkillHand` 和 UI 上的数量文案。
-4. 改装备规则：检查 `src/systems/ability.js` 里的 `SKILL_LIMITS` 和 `canAssignSkill`。
-5. 改战斗节奏：检查 `src/systems/battle-system.js` 的 12 回合、`src/scenes/battle-scene.js` 的回放延迟。
+3. 改技能数量：检查 `src/systems/ability.js` 里的 `createSkillHand`、`src/scenes/prep/prep-rules.js` 和 UI 上的数量文案。
+4. 改装备规则：检查 `src/systems/ability.js` 里的 `SKILL_LIMITS` / `COMPETITIVE_SKILL_LIMITS` / `canAssignSkill`、`src/scenes/prep/prep-actions.js` 的拦截提示、`src/scenes/prep-scene.js` 的高/初计数显示、`src/scenes/prep/prep-rules.js` 和 `src/scenes/prep/prep-tooltips.js` 的规则说明。
+5. 改战斗节奏：检查 `src/systems/battle-system.js` 的 12 回合、`src/scenes/battle-scene.js` 的回放延迟、战斗摘要和结束复盘。
 6. 改伤害体验：检查 `src/systems/battle-system.js` 的攻击公式、暴击率、暴击倍率，以及 `src/systems/ability.js` 的反震/吸血/复活/中毒等联动。
-7. 改队伍人数：检查 `src/data/game-data.js` 的 `POOL_KEYS`、头像抽取数量、`src/systems/battle-system.js` 的 BO3 上场逻辑、`styles/prep-scene.css` / `styles/battle-scene.css` 的卡片布局。
+7. 改队伍人数：检查 `src/data/game-data.js` 的 `POOL_KEYS`、头像抽取数量、`src/flow/game-flow.js` 的选人流程、`src/systems/battle-system.js` 的 BO3/KOF3 上场逻辑、`styles/prep-scene.css` / `styles/battle-scene.css` 的卡片布局。
 8. 改乱斗模式跨品质平衡：跑 `tools/balance_simulation.js`，重点看第五张“跨品质固定测试（每组 200 场）”。
-9. 改端口或部署方式：检查 `server.js`、`start-game.bat`、HTML 引用路径。
+9. 改端口或部署方式：检查 `server.js`、`tools/local-server.js`、`start-game.bat`、HTML 引用路径。
+10. 拆分或新增入口脚本：同步 `index.html` 和 `play.html` 的 `<script>` 顺序，并跑 `tools/build-static.js`。

@@ -183,6 +183,10 @@ function isKofMode() {
   return state.battleMode === "brawl";
 }
 
+function isPracticeMode() {
+  return state.battleMode === "practice";
+}
+
 function currentKofPet(side) {
   if (!isKofMode() || !state.result) return null;
   const id = side === "player" ? state.result.currentPlayerId : state.result.currentEnemyId;
@@ -214,9 +218,10 @@ function appendBattleMatch(player, enemy) {
   else if (match.winner === "player") result.playerWins += 1;
   else result.enemyWins += 1;
 
-  const scoreText = isKofMode()
+  let scoreText = isKofMode()
     ? `KOF3 擂台：玩家击败 ${result.playerWins}/3，对方击败 ${result.enemyWins}/3。`
     : `BO3 当前比分：玩家 ${result.playerWins} - ${result.enemyWins} 电脑。`;
+  if (isPracticeMode()) scoreText = `练习 BO1：${match.winner === "player" ? "我方" : "对方"}赢下本局。`;
   result.log.push(scoreText);
   result.events.push({
     type: "matchResult",
@@ -241,6 +246,7 @@ function appendBattleMatch(player, enemy) {
 
   result.player = match.player;
   result.enemy = match.enemy;
+  if (isPracticeMode()) result.winner = match.winner;
   if (!isKofMode() && result.playerWins >= 2) result.winner = "player";
   if (!isKofMode() && result.enemyWins >= 2) result.winner = "enemy";
   state.result = result;
@@ -358,7 +364,7 @@ function combatStatuses(combatant) {
       type: "buff",
       name: "招架",
       value: `${combatant.parryLeft}次`,
-      description: "剩余可免疫攻击次数",
+      description: "剩余可降低攻击伤害次数",
     });
   }
   return statuses;
@@ -418,16 +424,18 @@ function performAttack(attacker, defender, ctx, options) {
     return;
   }
 
+  let parryReduction = 0;
+  let parrySkill = null;
   if (defender.parryLeft > 0) {
     defender.parryLeft -= 1;
-    const parrySkill = hasSkill(defender, "parry");
-    triggerSkill(ctx, defender, `-${parrySkill.name}`, `${attacker.name} 攻击，${defender.name} 触发招架，免疫本次攻击。`, {
-      blocked: true,
+    parrySkill = hasSkill(defender, "parry");
+    parryReduction = parrySkill.tier === "high" ? 0.65 : 0.75;
+    triggerSkill(ctx, defender, `-${parrySkill.name}`, `${attacker.name} 攻击，${defender.name} 触发招架，本次伤害降低 ${Math.round(parryReduction * 100)}%。`, {
       attackAnimationSide: attacker.side,
+      parried: true,
+      parryReductionPercent: Math.round(parryReduction * 100),
       targetSide: defender.side,
     });
-    if (config.canCombo) applyCombo(attacker, defender, ctx);
-    return;
   }
 
   const baseCrit = 5 + skillTierValue(attacker, "crit", 15, 30);
@@ -441,6 +449,8 @@ function performAttack(attacker, defender, ctx, options) {
   const randomRoll = randomInt(-2, 2);
   const baseDamage = Math.max(4, Math.round(attacker.atk * 1.2 - targetDefense * 0.9 + randomRoll));
   let damage = Math.max(4, Math.round(baseDamage * critMultiplier));
+  const preParryDamage = damage;
+  if (parryReduction > 0) damage = Math.max(1, Math.round(damage * (1 - parryReduction)));
   if (luckySkill) {
     triggerSkill(ctx, defender, luckySkill.name, `${defender.name} 触发${luckySkill.name}，暴击总伤害只承受 ${Math.round(luckyDamageRate * 100)}%。`);
   }
@@ -455,7 +465,7 @@ function performAttack(attacker, defender, ctx, options) {
     targetSide: defender.side,
     damage,
     critical: isCrit,
-    effectName: config.isComboAttack ? "combo" : isCrit ? "crit" : "attack",
+    effectName: parryReduction > 0 ? "parry" : config.isComboAttack ? "combo" : isCrit ? "crit" : "attack",
     effectSide: defender.side,
     skillName: attackSkills.map((skill) => skill.name).join(" / "),
     damageBreakdown: {
@@ -470,6 +480,8 @@ function performAttack(attacker, defender, ctx, options) {
       luckySkillName: luckySkill?.name || "",
       luckyDamageRatePercent: Math.round(luckyDamageRate * 100),
       critMultiplier,
+      preParryDamage,
+      parryReductionPercent: Math.round(parryReduction * 100),
       finalDamage: damage,
       minimumDamage: 4,
     },

@@ -6,7 +6,7 @@ const SKILL_GROUPS = [
   ["lifesteal", "吸血", "造成伤害的15%转化为生命", "高级吸血", "造成伤害的30%转化为生命"],
   ["revive", "神佑复生", "死亡时20%概率复活，每场最多一次", "高级神佑复生", "死亡时35%概率复活，每场最多一次"],
   ["lucky", "幸运", "受到暴击时，暴击伤害降低40%", "高级幸运", "受到暴击时，暴击伤害降低60%"],
-  ["parry", "招架", "本场第一次受到攻击完全免疫", "高级招架", "本场前两次受到攻击完全免疫"],
+  ["parry", "招架", "本场第一次受到攻击伤害降低75%", "高级招架", "本场前两次受到攻击伤害降低65%"],
   ["defense", "防御", "防御提高30%，攻击力降低10%", "高级防御", "防御提高50%，攻击力降低10%"],
   ["regen", "再生", "每回合恢复最大生命3%", "高级再生", "每回合恢复最大生命7%"],
   ["reflect", "反震", "受到攻击时，有35%概率反弹本次伤害的35%。反震为真实伤害，不触发吸血、反震、反击。", "高级反震", "受到攻击时，有35%概率反弹本次伤害的65%。反震为真实伤害，不触发吸血、反震、反击。"],
@@ -14,7 +14,7 @@ const SKILL_GROUPS = [
   ["agile", "敏捷", "速度提高20%", "高级敏捷", "速度提高40%"],
   ["unyielding", "不屈", "生命低于50%时，造成伤害提高20%", "高级不屈", "生命低于50%时，造成伤害提高40%"],
   ["poison", "毒", "攻击时有25%概率使目标中毒2回合", "高级毒", "攻击时有45%概率使目标中毒2回合，免疫中毒"],
-  ["flight", "飞行", "受到攻击时5%概率免疫本次攻击", "高级飞行", "受到攻击时15%概率免疫本次攻击；若本次攻击来自连击追加攻击，免疫率改为50%"],
+  ["flight", "闪躲", "受到攻击时5%概率免疫本次攻击", "高级闪躲", "受到攻击时15%概率免疫本次攻击；若本次攻击来自连击追加攻击，免疫率改为50%"],
 ].map(([group, basicName, basicDescription, highName, highDescription]) => ({
   group,
   basic: { tier: "basic", name: basicName, description: basicDescription },
@@ -40,6 +40,13 @@ function createSkillHand(owner) {
   const highSkills = highGroups.map((group) => createSkill(owner, group, group.high));
   const basicSkills = basicGroups.map((group) => createSkill(owner, group, group.basic));
   return shuffle([...highSkills, ...basicSkills]);
+}
+
+function createFullSkillHand(owner) {
+  return SKILL_GROUPS.flatMap((group) => [
+    createSkill(owner, group, group.basic),
+    createSkill(owner, group, group.high),
+  ]);
 }
 
 function createSkill(owner, group, template) {

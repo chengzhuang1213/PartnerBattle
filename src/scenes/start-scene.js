@@ -10,7 +10,7 @@ function renderStart() {
       <header class="start-title">
         <div class="sparkle-row" aria-hidden="true">
           <span>✦</span>
-          <span>✧</span>
+          <span>✦</span>
           <span>✦</span>
         </div>
         <h1>伙伴对决</h1>
@@ -24,14 +24,14 @@ function renderStart() {
           <small>挑战 AI 对手</small>
         </button>
         <button class="mode-card duo" data-start-hotseat type="button">
-          <span class="mode-icon">●●</span>
+          <span class="mode-icon">◐◑</span>
           <strong>双人同屏</strong>
-          <small>热座闭眼 Build</small>
+          <small>热座盲眼 Build</small>
         </button>
-        <button class="mode-card online" type="button" disabled>
-          <span class="mode-icon">◎</span>
-          <strong>双人联机</strong>
-          <small>敬请期待</small>
+        <button class="mode-card online" data-start-practice type="button">
+          <span class="mode-icon">●</span>
+          <strong>练习模式</strong>
+          <small>自定义 Build · BO1</small>
         </button>
       </main>
 

@@ -187,6 +187,36 @@
   --prep-accent-soft: #eaf4ff;
 }
 
+.battle-prep-card.theme-gold-knight {
+  --prep-accent: #d99d24;
+  --prep-accent-soft: #fff5d9;
+}
+
+.battle-prep-card.theme-silver-mage {
+  --prep-accent: #6f8496;
+  --prep-accent-soft: #eef3f7;
+}
+
+.battle-prep-card.theme-flame-warrior {
+  --prep-accent: #e44d35;
+  --prep-accent-soft: #ffe7df;
+}
+
+.battle-prep-card.theme-pink-fox-mage {
+  --prep-accent: #e85aa1;
+  --prep-accent-soft: #ffe6f2;
+}
+
+.battle-prep-card.theme-brown-rogue {
+  --prep-accent: #8a613c;
+  --prep-accent-soft: #f2e7dc;
+}
+
+.battle-prep-card.theme-blue-ninja {
+  --prep-accent: #2f7fda;
+  --prep-accent-soft: #e3f0ff;
+}
+
 .battle-prep-card-head {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
@@ -682,16 +712,49 @@
   white-space: nowrap;
 }
 
-.pool-name.orange {
+.pool-name.orange,
+.partner-name.orange {
   color: #f29a42;
 }
 
-.pool-name.purple {
+.pool-name.purple,
+.partner-name.purple {
   color: #8d70de;
 }
 
-.pool-name.blue {
+.pool-name.blue,
+.partner-name.blue {
   color: #4f91f4;
+}
+
+.pool-name.theme-gold-knight,
+.partner-name.theme-gold-knight {
+  color: #d99d24;
+}
+
+.pool-name.theme-silver-mage,
+.partner-name.theme-silver-mage {
+  color: #6f8496;
+}
+
+.pool-name.theme-flame-warrior,
+.partner-name.theme-flame-warrior {
+  color: #e44d35;
+}
+
+.pool-name.theme-pink-fox-mage,
+.partner-name.theme-pink-fox-mage {
+  color: #e85aa1;
+}
+
+.pool-name.theme-brown-rogue,
+.partner-name.theme-brown-rogue {
+  color: #8a613c;
+}
+
+.pool-name.theme-blue-ninja,
+.partner-name.theme-blue-ninja {
+  color: #2f7fda;
 }
 
 .hp-text {
@@ -1136,6 +1199,48 @@
   color: #f05d9f;
 }
 
+.match-review-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(118, 135, 180, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 12px 14px;
+}
+
+.match-review-panel h2 {
+  margin: 0;
+  color: #39467d;
+  font-size: 18px;
+}
+
+.match-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.match-review-card {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border-radius: 10px;
+  background: rgba(246, 249, 255, 0.8);
+  padding: 10px 12px;
+  color: #4c5b91;
+  font-weight: 900;
+}
+
+.match-review-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.match-review-card b {
+  color: #e84d91;
+}
+
 .team-dock {
   display: grid;
   grid-template-columns: 1fr 110px 1fr;
@@ -1161,6 +1266,23 @@
   padding: 10px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 8px 20px rgba(105, 122, 170, 0.11);
+}
+
+.battle-order-badge {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #465080;
+  font-size: 14px;
+  font-weight: 1000;
+  box-shadow: 0 6px 12px rgba(76, 57, 140, 0.16);
+  z-index: 2;
 }
 
 .team-mini-card.player {
@@ -1289,10 +1411,42 @@
 
 .combat-log-panel {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.battle-summary-panel {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid rgba(118, 135, 180, 0.16);
+  background: rgba(248, 250, 255, 0.82);
+  padding: 12px 18px;
+}
+
+.battle-summary-panel h3 {
+  margin: 0;
+  color: #39467d;
+  font-size: 17px;
+}
+
+.battle-summary-panel ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.battle-summary-panel li {
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 9px;
+  color: #4c5b91;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.35;
 }
 
 .combat-log-head {
@@ -1589,6 +1743,10 @@
 
   .combat-main {
     grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .match-review-grid {
+    grid-template-columns: 1fr;
   }
 
   .combat-stage {

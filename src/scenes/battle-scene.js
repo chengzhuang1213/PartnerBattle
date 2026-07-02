@@ -119,6 +119,7 @@ function renderBattleReplayPage() {
           ${healBubble("enemy", frame)}
         </section>
         <div class="combat-prompt ${replayDone && result.winner ? "ended" : ""}">${battlePromptText(result, frame, replayDone)}</div>
+        ${replayDone && result.winner ? matchReviewPanel(result) : ""}
         <div class="battle-control-bar">
           <button class="secondary-action soft-action" data-confirm-home type="button">返回主菜单</button>
           <button class="secondary-action soft-action" data-toggle-log>战斗分析</button>
@@ -135,6 +136,15 @@ function renderBattleReplayPage() {
 function combatHeader(playerWins, enemyWins, matchIndex) {
   const playerLabel = state.mode === "hotseat" ? "玩家 A" : "我方";
   const enemyLabel = state.mode === "hotseat" ? "玩家 B" : "对方 (AI)";
+  if (isPracticeMode()) {
+    return `
+      <header class="combat-scorebar">
+        <div class="score-side player-score"><strong>我方</strong><span>练习</span></div>
+        <div class="round-badge">BO1</div>
+        <div class="score-side enemy-score"><span>练习</span><strong>对方</strong></div>
+      </header>
+    `;
+  }
   if (isKofMode()) {
     return `
       <header class="combat-scorebar">
@@ -156,6 +166,7 @@ function combatHeader(playerWins, enemyWins, matchIndex) {
 
 function battlePromptText(result, frame, replayDone) {
   if (!replayDone || !result.winner) return frame.text;
+  if (isPracticeMode()) return result.winner === "player" ? "练习 BO1 胜利！" : "练习 BO1 结束：对方胜利";
   if (isKofMode()) return result.winner === "player" ? "KOF3 擂台胜利！对方 3 名伙伴全部失败" : "KOF3 擂台结束：我方 3 名伙伴全部失败";
   return result.winner === "player" ? "BO3 战斗胜利！对方失败，本局已结束" : "BO3 战斗结束：我方失败，本局已结束";
 }
@@ -188,6 +199,7 @@ function combatLogPanel(events, matchIndexes = [], activeMatchIndex = 0) {
         <h2>战斗分析</h2>
         ${battleLogTabs(matchIndexes, activeMatchIndex)}
       </div>
+      ${battleSummaryPanel(events)}
       <ol class="combat-log">
         ${events.map(renderBattleLogEntry).join("")}
       </ol>
@@ -195,12 +207,78 @@ function combatLogPanel(events, matchIndexes = [], activeMatchIndex = 0) {
   `;
 }
 
+function battleSummaryPanel(events) {
+  if (!events.length) return "";
+  const summary = battleSummaryItems(events);
+  return `
+    <section class="battle-summary-panel">
+      <h3>摘要</h3>
+      <ul>
+        ${summary.map((item) => `<li>${item}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function battleSummaryItems(events) {
+  const skillCounts = new Map();
+  let topDamage = null;
+  let winner = "";
+  let crits = 0;
+  let combos = 0;
+  let poisons = 0;
+  let revives = 0;
+  let counters = 0;
+  let reflects = 0;
+  let blocks = 0;
+
+  for (const event of events) {
+    if (event.type === "skill" && event.skillName && !event.skillName.startsWith("-")) {
+      skillCounts.set(event.skillName, (skillCounts.get(event.skillName) || 0) + 1);
+    }
+    if (event.type === "attack" && (!topDamage || event.damage > topDamage.damage)) topDamage = event;
+    if (event.critical) crits += 1;
+    if (event.effectName === "combo") combos += 1;
+    if (event.effectName === "poison" || event.skillName === "中毒") poisons += 1;
+    if (event.skillName?.includes("复生")) revives += 1;
+    if (event.effectName === "counter" || event.skillName?.includes("反击")) counters += 1;
+    if (event.effectName === "reflect" || event.skillName?.includes("反震")) reflects += 1;
+    if (event.blocked || event.evaded || event.skillName?.includes("招架") || event.skillName?.includes("闪躲")) blocks += 1;
+    if (event.winner || event.matchWinner) winner = sideName(event.winner || event.matchWinner);
+  }
+
+  const topSkills = [...skillCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => `${name} x${count}`);
+  const reasons = [
+    crits ? `暴击 ${crits} 次` : "",
+    combos ? `连击 ${combos} 次` : "",
+    poisons ? `毒/中毒 ${poisons} 次` : "",
+    revives ? `复活 ${revives} 次` : "",
+    counters || reflects ? `防反 ${counters + reflects} 次` : "",
+    blocks ? `闪躲/招架 ${blocks} 次` : "",
+  ].filter(Boolean);
+
+  return [
+    topSkills.length ? `关键技能：${topSkills.join("，")}` : "关键技能：本局主要由普通攻击和属性差决定。",
+    topDamage ? `最高单次伤害：${sideName(topDamage.actorSide)}造成 ${topDamage.damage} 点${topDamage.critical ? "，来自暴击" : ""}。` : "最高单次伤害：暂无攻击事件。",
+    reasons.length ? `主要影响：${reasons.join("，")}。` : "主要影响：没有明显的暴击、连击、毒、复活或防反事件。",
+    winner ? `结果判断：${winner}赢下这一局。` : "结果判断：本局仍在回放中。",
+  ];
+}
+
+function sideName(side) {
+  if (side === "player") return state.mode === "hotseat" ? "玩家 A" : "我方";
+  if (side === "enemy") return state.mode === "hotseat" ? "玩家 B" : "对方";
+  return "";
+}
+
 function battleLogTabs(matchIndexes, activeMatchIndex) {
-  const labels = ["第一场", "第二场", "第三场"];
   return `
     <div class="battle-log-tabs" role="tablist" aria-label="战斗场次">
       ${matchIndexes
-        .map((matchIndex) => `<button class="${matchIndex === activeMatchIndex ? "active" : ""}" data-battle-log-match="${matchIndex}" type="button" role="tab" aria-selected="${matchIndex === activeMatchIndex}">${labels[matchIndex] || `第 ${matchIndex + 1} 场`}</button>`)
+        .map((matchIndex) => `<button class="${matchIndex === activeMatchIndex ? "active" : ""}" data-battle-log-match="${matchIndex}" type="button" role="tab" aria-selected="${matchIndex === activeMatchIndex}">第 ${matchIndex + 1} 场</button>`)
         .join("")}
     </div>
   `;
@@ -277,8 +355,10 @@ function teamMiniCard(partner, side, frame, usedIds, canPick, hideSkills = false
   const pickable = canPick && !used && !current;
   const inspectable = hideSkills || (state.mode === "hotseat" && !pickable);
   const inspecting = state.pendingInspectSide === side && state.pendingInspectId === partner.id;
+  const orderText = battleOrderText(partner, side);
   return `
     <article class="team-mini-card ${side} ${current ? "active" : ""} ${used ? "used" : ""} ${pickable ? "can-pick" : ""} ${inspectable ? "can-inspect" : ""} ${inspecting ? "inspecting" : ""}" ${pickable ? `data-battle-pick="${partner.id}" data-battle-pick-side="${side}"` : ""} ${inspectable ? `data-battle-inspect="${partner.id}" data-battle-inspect-side="${side}"` : ""}>
+      <span class="battle-order-badge">${orderText}</span>
       <div class="mini-avatar">${partnerArt(partner)}</div>
       <div class="mini-info">
         ${poolName(partner, "strong")}
@@ -288,6 +368,16 @@ function teamMiniCard(partner, side, frame, usedIds, canPick, hideSkills = false
       <b>${current ? "守擂中" : used ? "已败" : pickable ? "点击上场" : "待命"}</b>
     </article>
   `;
+}
+
+function battleOrderText(partner, side) {
+  const matches = state.result?.matches || [];
+  const matchIndex = matches.findIndex((match) => side === "player" ? match.player.id === partner.id : match.enemy.id === partner.id);
+  if (matchIndex >= 0) return String(matchIndex + 1);
+  const pendingId = side === "player" ? state.pendingPlayerId : state.pendingEnemyId;
+  if (pendingId === partner.id) return String(matches.length + 1);
+  const team = side === "player" ? state.playerTeam : state.enemyTeam;
+  return String(team.findIndex((item) => item.id === partner.id) + 1);
 }
 
 function battleLogOverlay(lines) {
@@ -302,6 +392,25 @@ function battleLogOverlay(lines) {
         ${combatLogPanel(activeLines, matchIndexes, activeMatchIndex)}
       </div>
     </div>
+  `;
+}
+
+function matchReviewPanel(result) {
+  if (!result.matches.length) return "";
+  const labels = ["第 1 局", "第 2 局", "第 3 局"];
+  return `
+    <section class="match-review-panel">
+      <h2>本场复盘</h2>
+      <div class="match-review-grid">
+        ${result.matches.map((match, index) => `
+          <article class="match-review-card ${match.winner}">
+            <strong>${labels[index] || `第 ${index + 1} 局`}</strong>
+            <span>${match.player.name} vs ${match.enemy.name}</span>
+            <b>${sideName(match.winner)}胜</b>
+          </article>
+        `).join("")}
+      </div>
+    </section>
   `;
 }
 
@@ -378,8 +487,9 @@ function battlePrepCard(partner, skillList, hideSkills = false, hp = null) {
   const skills = hideSkills ? [] : displaySkillOrder(getPetSkills(partner, skillList));
   const currentHp = Number.isFinite(hp) ? hp : partner.stats.hp;
   const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / partner.stats.hp) * 100)));
+  const cardClass = state.battleMode === "competitive" ? partnerThemeClass(partner) : `pool-${partner.poolKey}`;
   return `
-    <article class="battle-prep-card pool-${partner.poolKey}">
+    <article class="battle-prep-card ${cardClass}">
       <div class="battle-prep-card-head">
         <div class="combat-avatar">${partnerArt(partner)}</div>
         <div class="battle-prep-card-title">

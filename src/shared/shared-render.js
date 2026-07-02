@@ -48,7 +48,16 @@ function battleArt(partner, attacking = false) {
 }
 
 function poolName(partner, tag = "span") {
-  return `<${tag} class="pool-name ${partner.poolClass}">${partner.name}</${tag}>`;
+  const colorClass = usePartnerThemeName() ? partnerThemeClass(partner) : partner.poolClass;
+  return `<${tag} class="pool-name ${colorClass}">${partner.name}</${tag}>`;
+}
+
+function partnerThemeClass(partner) {
+  return `theme-${partner.avatarId || partner.poolClass || "default"}`;
+}
+
+function usePartnerThemeName() {
+  return typeof state !== "undefined" && state.battleMode === "competitive";
 }
 
 function statRows(pet) {
